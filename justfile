@@ -6,6 +6,15 @@ set dotenv-load
 default:
     @just --list
 
+# === Setup ===
+
+# Bootstrap development environment
+bootstrap:
+    mise trust
+    mise install
+    lefthook install
+    cargo check
+
 # === Development ===
 
 # Build the project
