@@ -60,19 +60,19 @@
 - [x] Implement GIF loading (first frame)
 
 ### 3.2 RAW Format Support
-- [ ] Add `rawloader` crate dependency
-- [ ] Implement CR2/CR3 (Canon) loading
-- [ ] Implement NEF (Nikon) loading
-- [ ] Implement ARW (Sony) loading
-- [ ] Implement RAF (Fuji) loading
-- [ ] Implement DNG loading
+- [x] Add `rawloader` crate dependency
+- [x] Implement CR2/CR3 (Canon) loading
+- [x] Implement NEF (Nikon) loading
+- [x] Implement ARW (Sony) loading
+- [x] Implement RAF (Fuji) loading
+- [x] Implement DNG loading
 - [ ] Add `--raw-full-decode` flag support
 
 ### 3.3 Filesystem Adapter
-- [ ] Implement `ImageSource` for filesystem
-- [ ] Directory traversal (recursive option)
-- [ ] File type filtering by extension
-- [ ] Error handling: skip unreadable files with warning
+- [x] Implement `ImageSource` for filesystem
+- [x] Directory traversal (recursive option)
+- [x] File type filtering by extension
+- [x] Error handling: skip unreadable files with warning
 
 ---
 

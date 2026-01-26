@@ -117,22 +117,264 @@ fn load_image(path: &Path) -> Result<ImageInfo> {
 }
 
 /// Loads a RAW image file.
+#[allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_precision_loss,
+    clippy::cast_sign_loss,
+    clippy::cast_lossless
+)]
 fn load_raw_image(path: &Path) -> Result<image::DynamicImage> {
     use rawloader::decode_file;
 
     let raw =
         decode_file(path).with_context(|| format!("Failed to decode RAW: {}", path.display()))?;
 
-    // Convert raw data to RGB image
-    // This is a simplified implementation - full implementation would do proper demosaicing
     let width = raw.width;
     let height = raw.height;
 
-    // For now, just create a placeholder - real implementation needs proper RAW processing
-    #[allow(clippy::cast_possible_truncation)]
-    let img = image::DynamicImage::new_rgb8(width as u32, height as u32);
+    // Extract raw pixel data
+    let raw_data: Vec<u16> = match raw.data {
+        rawloader::RawImageData::Integer(data) => data,
+        rawloader::RawImageData::Float(data) => {
+            // Convert float data to u16
+            data.into_iter()
+                .map(|f| (f.clamp(0.0, 1.0) * 65535.0) as u16)
+                .collect()
+        }
+    };
 
-    Ok(img)
+    // Get black/white levels for normalization
+    let black = raw.blacklevels.iter().copied().max().unwrap_or(0) as f32;
+    let white = raw.whitelevels.iter().copied().min().unwrap_or(65535) as f32;
+    let range = (white - black).max(1.0);
+
+    // Simple bilinear demosaic
+    let mut rgb = vec![0u8; width * height * 3];
+    let cfa = &raw.cfa;
+
+    for y in 0..height {
+        for x in 0..width {
+            let (r, g, b) = demosaic_pixel(&raw_data, width, height, x, y, cfa, black, range);
+            let idx = (y * width + x) * 3;
+            rgb[idx] = r;
+            rgb[idx + 1] = g;
+            rgb[idx + 2] = b;
+        }
+    }
+
+    #[allow(clippy::cast_possible_truncation)]
+    let img = image::RgbImage::from_raw(width as u32, height as u32, rgb)
+        .context("Failed to create image from RAW data")?;
+
+    Ok(image::DynamicImage::from(img))
+}
+
+/// Demosaic a single pixel using bilinear interpolation.
+#[allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_precision_loss,
+    clippy::cast_sign_loss,
+    clippy::cast_lossless,
+    clippy::many_single_char_names,
+    clippy::too_many_arguments
+)]
+fn demosaic_pixel(
+    data: &[u16],
+    width: usize,
+    height: usize,
+    x: usize,
+    y: usize,
+    cfa: &rawloader::CFA,
+    black: f32,
+    range: f32,
+) -> (u8, u8, u8) {
+    let color = cfa.color_at(y, x);
+
+    // Sample neighboring pixels for interpolation
+    let get_pixel = |px: usize, py: usize| -> f32 {
+        if px < width && py < height {
+            let val = data[py * width + px] as f32;
+            ((val - black) / range).clamp(0.0, 1.0)
+        } else {
+            0.0
+        }
+    };
+
+    let current = get_pixel(x, y);
+
+    // Simple bilinear interpolation based on Bayer pattern position
+    let (r, g, b) = match color {
+        0 => {
+            // Red pixel
+            let g = average_neighbors_cross(data, width, height, x, y, black, range);
+            let b = average_neighbors_diagonal(data, width, height, x, y, black, range);
+            (current, g, b)
+        }
+        1 => {
+            // Green pixel (on red row or blue row)
+            let r = average_neighbors_horizontal(data, width, height, x, y, black, range);
+            let b = average_neighbors_vertical(data, width, height, x, y, black, range);
+            (r, current, b)
+        }
+        2 => {
+            // Blue pixel
+            let r = average_neighbors_diagonal(data, width, height, x, y, black, range);
+            let g = average_neighbors_cross(data, width, height, x, y, black, range);
+            (r, g, current)
+        }
+        _ => {
+            // Green pixel variant (swap r/b interpolation)
+            let r = average_neighbors_vertical(data, width, height, x, y, black, range);
+            let b = average_neighbors_horizontal(data, width, height, x, y, black, range);
+            (r, current, b)
+        }
+    };
+
+    // Apply simple gamma correction and convert to 8-bit
+    let gamma = |v: f32| -> u8 { (v.powf(1.0 / 2.2) * 255.0) as u8 };
+    (gamma(r), gamma(g), gamma(b))
+}
+
+#[allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    clippy::cast_precision_loss,
+    clippy::cast_sign_loss,
+    clippy::cast_lossless
+)]
+fn average_neighbors_cross(
+    data: &[u16],
+    width: usize,
+    height: usize,
+    x: usize,
+    y: usize,
+    black: f32,
+    range: f32,
+) -> f32 {
+    let mut sum = 0.0;
+    let mut count = 0;
+
+    for (dx, dy) in [(-1i32, 0i32), (1, 0), (0, -1), (0, 1)] {
+        let nx = x as i32 + dx;
+        let ny = y as i32 + dy;
+        if nx >= 0 && (nx as usize) < width && ny >= 0 && (ny as usize) < height {
+            let val = data[ny as usize * width + nx as usize] as f32;
+            sum += ((val - black) / range).clamp(0.0, 1.0);
+            count += 1;
+        }
+    }
+
+    if count > 0 {
+        sum / count as f32
+    } else {
+        0.0
+    }
+}
+
+#[allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    clippy::cast_precision_loss,
+    clippy::cast_sign_loss,
+    clippy::cast_lossless
+)]
+fn average_neighbors_diagonal(
+    data: &[u16],
+    width: usize,
+    height: usize,
+    x: usize,
+    y: usize,
+    black: f32,
+    range: f32,
+) -> f32 {
+    let mut sum = 0.0;
+    let mut count = 0;
+
+    for (dx, dy) in [(-1i32, -1i32), (1, -1), (-1, 1), (1, 1)] {
+        let nx = x as i32 + dx;
+        let ny = y as i32 + dy;
+        if nx >= 0 && (nx as usize) < width && ny >= 0 && (ny as usize) < height {
+            let val = data[ny as usize * width + nx as usize] as f32;
+            sum += ((val - black) / range).clamp(0.0, 1.0);
+            count += 1;
+        }
+    }
+
+    if count > 0 {
+        sum / count as f32
+    } else {
+        0.0
+    }
+}
+
+#[allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    clippy::cast_precision_loss,
+    clippy::cast_sign_loss,
+    clippy::cast_lossless
+)]
+fn average_neighbors_horizontal(
+    data: &[u16],
+    width: usize,
+    _height: usize,
+    x: usize,
+    y: usize,
+    black: f32,
+    range: f32,
+) -> f32 {
+    let mut sum = 0.0;
+    let mut count = 0;
+
+    for dx in [-1i32, 1] {
+        let nx = x as i32 + dx;
+        if nx >= 0 && (nx as usize) < width {
+            let val = data[y * width + nx as usize] as f32;
+            sum += ((val - black) / range).clamp(0.0, 1.0);
+            count += 1;
+        }
+    }
+
+    if count > 0 {
+        sum / count as f32
+    } else {
+        0.0
+    }
+}
+
+#[allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    clippy::cast_precision_loss,
+    clippy::cast_sign_loss,
+    clippy::cast_lossless
+)]
+fn average_neighbors_vertical(
+    data: &[u16],
+    width: usize,
+    height: usize,
+    x: usize,
+    y: usize,
+    black: f32,
+    range: f32,
+) -> f32 {
+    let mut sum = 0.0;
+    let mut count = 0;
+
+    for dy in [-1i32, 1] {
+        let ny = y as i32 + dy;
+        if ny >= 0 && (ny as usize) < height {
+            let val = data[ny as usize * width + x] as f32;
+            sum += ((val - black) / range).clamp(0.0, 1.0);
+            count += 1;
+        }
+    }
+
+    if count > 0 {
+        sum / count as f32
+    } else {
+        0.0
+    }
 }
 
 #[cfg(test)]
