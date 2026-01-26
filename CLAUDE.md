@@ -56,3 +56,12 @@ photo-qa-adapters   External adapters
 ## ML Inference
 
 Uses Candle (pure Rust) with safetensors models. Models auto-download to `~/.local/share/photo-qa/models/` on first run. GPU (Metal/CUDA) auto-detected.
+
+## Task Tracking
+
+Use `TASKS.md` for implementation progress:
+
+- Before starting work: find relevant task in TASKS.md
+- Mark `[ ]` → `[x]` when completing a task
+- Commit TASKS.md updates alongside code changes
+- Keep tasks granular; split if needed
