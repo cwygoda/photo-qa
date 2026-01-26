@@ -6,6 +6,6 @@ mod blur;
 mod exposure;
 mod eyes;
 
-pub use blur::BlurModule;
-pub use exposure::ExposureModule;
-pub use eyes::EyesModule;
+pub use blur::{BlurConfig, BlurModule};
+pub use exposure::{ExposureConfig, ExposureModule};
+pub use eyes::{EyesConfig, EyesModule};

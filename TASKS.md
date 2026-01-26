@@ -37,9 +37,9 @@
 - [x] `ProgressSink` trait - progress events for CLI/TUI
 
 ### 2.3 QaModule Trait
-- [ ] Define `QaModule` trait with `analyze(&Image) -> Vec<Issue>`
-- [ ] Define module registration/discovery pattern
-- [ ] Define module configuration interface
+- [x] Define `QaModule` trait with `analyze(&Image) -> Vec<Issue>`
+- [x] Define module registration/discovery pattern
+- [x] Define module configuration interface
 
 ### 2.4 Image Abstraction
 - [ ] Create internal `Image` type wrapping decoded data
