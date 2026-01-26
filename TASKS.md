@@ -16,10 +16,10 @@
 - [x] Add `just bootstrap` target
 
 ### 1.3 CI/CD Pipeline
-- [ ] GitHub Actions: fmt/lint/test on push/PR
-- [ ] Multi-platform build (Linux x86_64, macOS x86_64, macOS ARM64)
-- [ ] semantic-release configuration
-- [ ] Release binary publishing to GitHub Releases
+- [x] GitHub Actions: fmt/lint/test on push/PR
+- [x] Multi-platform build (Linux x86_64, macOS x86_64, macOS ARM64)
+- [x] semantic-release configuration
+- [x] Release binary publishing to GitHub Releases
 
 ---
 
