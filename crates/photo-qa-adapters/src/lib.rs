@@ -7,3 +7,5 @@
 
 pub mod fs;
 pub mod models;
+
+pub use fs::FsImageSource;

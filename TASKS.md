@@ -51,13 +51,13 @@
 ## Phase 3: Image Loading (`photo-qa-adapters`)
 
 ### 3.1 Raster Format Support
-- [ ] Add `image` crate dependency
-- [ ] Implement JPEG loading
-- [ ] Implement PNG loading
-- [ ] Implement TIFF loading
-- [ ] Implement WebP loading
-- [ ] Implement BMP loading
-- [ ] Implement GIF loading (first frame)
+- [x] Add `image` crate dependency
+- [x] Implement JPEG loading
+- [x] Implement PNG loading
+- [x] Implement TIFF loading
+- [x] Implement WebP loading
+- [x] Implement BMP loading
+- [x] Implement GIF loading (first frame)
 
 ### 3.2 RAW Format Support
 - [ ] Add `rawloader` crate dependency
