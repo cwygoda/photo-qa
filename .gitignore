@@ -1,0 +1,33 @@
+# Rust
+/target/
+**/*.rs.bk
+Cargo.lock
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Models (downloaded at runtime)
+/models/
+
+# Test fixtures (downloaded by script)
+/tests/fixtures/
+
+# Coverage
+/coverage/
+*.profraw
+*.profdata
+
+# Environment
+.env
+.env.local
+
+# Logs
+*.log

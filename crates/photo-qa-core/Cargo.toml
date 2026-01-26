@@ -1,0 +1,34 @@
+[package]
+name = "photo-qa-core"
+description = "Core domain logic and QA modules for photo-qa"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[features]
+default = []
+metal = []
+cuda = []
+
+[dependencies]
+thiserror.workspace = true
+anyhow.workspace = true
+tokio.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tracing.workspace = true
+image.workspace = true
+rawloader.workspace = true
+kamadak-exif.workspace = true
+candle-core.workspace = true
+candle-nn.workspace = true
+safetensors.workspace = true
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["rt", "macros"] }
+
+[lints]
+workspace = true

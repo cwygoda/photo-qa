@@ -1,0 +1,25 @@
+[package]
+name = "photo-qa-adapters"
+description = "Filesystem, output, and model download adapters for photo-qa"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[dependencies]
+photo-qa-core.workspace = true
+thiserror.workspace = true
+anyhow.workspace = true
+tokio.workspace = true
+serde.workspace = true
+tracing.workspace = true
+image.workspace = true
+rawloader.workspace = true
+dirs.workspace = true
+reqwest.workspace = true
+sha2.workspace = true
+
+[lints]
+workspace = true
