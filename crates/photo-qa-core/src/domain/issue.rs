@@ -2,6 +2,8 @@
 
 use serde::{Deserialize, Serialize};
 
+use super::BoundingBox;
+
 /// A quality issue detected in an image.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Issue {
@@ -43,9 +45,9 @@ pub enum IssueDetails {
 pub struct BlurDetails {
     /// Type of blur detected.
     pub blur_type: BlurType,
-    /// Bounding box of the detected subject region [x, y, width, height].
+    /// Bounding box of the detected subject region.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub subject_bbox: Option<[u32; 4]>,
+    pub subject_bbox: Option<BoundingBox>,
 }
 
 /// Type of blur detected.
@@ -95,8 +97,8 @@ pub struct EyesDetails {
 /// Detection result for a single face.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FaceResult {
-    /// Face bounding box [x, y, width, height].
-    pub bbox: [u32; 4],
+    /// Face bounding box.
+    pub bbox: BoundingBox,
     /// Left eye aspect ratio.
     pub left_ear: f32,
     /// Right eye aspect ratio.

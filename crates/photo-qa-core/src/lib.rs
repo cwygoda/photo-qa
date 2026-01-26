@@ -9,7 +9,7 @@ pub mod modules;
 pub mod ports;
 
 pub use domain::{
-    AnalysisResult, BlurDetails, BlurType, ExposureDetails, EyesDetails, FaceResult, ImageInfo,
-    Issue, IssueType,
+    AnalysisResult, BlurDetails, BlurType, BoundingBox, ExposureDetails, ExposureDirection,
+    EyesDetails, FaceResult, ImageDimensions, ImageInfo, Issue, IssueDetails, IssueType, QaModule,
 };
 pub use ports::{ImageSource, ProgressEvent, ProgressSink, ResultOutput};

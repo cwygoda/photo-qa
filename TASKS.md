@@ -26,10 +26,10 @@
 ## Phase 2: Domain Core (`photo-qa-core`)
 
 ### 2.1 Core Types
-- [ ] Define `Issue` type (type, score, details)
-- [ ] Define `AnalysisResult` type (path, timestamp, dimensions, issues, exif)
-- [ ] Define `ImageDimensions` type
-- [ ] Define `BoundingBox` type
+- [x] Define `Issue` type (type, score, details)
+- [x] Define `AnalysisResult` type (path, timestamp, dimensions, issues, exif)
+- [x] Define `ImageDimensions` type
+- [x] Define `BoundingBox` type
 
 ### 2.2 Port Traits
 - [ ] `ImageSource` trait - load images from various sources

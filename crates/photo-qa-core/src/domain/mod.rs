@@ -9,4 +9,4 @@ pub use issue::{
     IssueDetails, IssueType,
 };
 pub use qa_module::QaModule;
-pub use result::{AnalysisResult, ImageInfo};
+pub use result::{AnalysisResult, BoundingBox, ImageDimensions, ImageInfo};
