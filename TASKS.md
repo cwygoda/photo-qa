@@ -32,9 +32,9 @@
 - [x] Define `BoundingBox` type
 
 ### 2.2 Port Traits
-- [ ] `ImageSource` trait - load images from various sources
-- [ ] `ResultOutput` trait - emit analysis results
-- [ ] `ProgressSink` trait - progress events for CLI/TUI
+- [x] `ImageSource` trait - load images from various sources
+- [x] `ResultOutput` trait - emit analysis results
+- [x] `ProgressSink` trait - progress events for CLI/TUI
 
 ### 2.3 QaModule Trait
 - [ ] Define `QaModule` trait with `analyze(&Image) -> Vec<Issue>`
