@@ -1,5 +1,6 @@
 //! Analysis result types.
 
+use image::GenericImageView;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -95,6 +96,53 @@ pub struct ImageInfo {
     pub image: image::DynamicImage,
 }
 
+impl ImageInfo {
+    /// Creates a new `ImageInfo` from a path and decoded image.
+    #[must_use]
+    pub fn new(path: impl Into<String>, image: image::DynamicImage) -> Self {
+        let (width, height) = image.dimensions();
+        Self {
+            path: path.into(),
+            width,
+            height,
+            image,
+        }
+    }
+
+    /// Returns the image dimensions.
+    #[must_use]
+    pub const fn dimensions(&self) -> ImageDimensions {
+        ImageDimensions {
+            width: self.width,
+            height: self.height,
+        }
+    }
+
+    /// Converts the image to RGB8 format.
+    #[must_use]
+    pub fn to_rgb8(&self) -> image::RgbImage {
+        self.image.to_rgb8()
+    }
+
+    /// Converts the image to RGBA8 format.
+    #[must_use]
+    pub fn to_rgba8(&self) -> image::RgbaImage {
+        self.image.to_rgba8()
+    }
+
+    /// Converts the image to grayscale (Luma8).
+    #[must_use]
+    pub fn to_luma8(&self) -> image::GrayImage {
+        self.image.to_luma8()
+    }
+
+    /// Returns the image color type.
+    #[must_use]
+    pub fn color_type(&self) -> image::ColorType {
+        self.image.color()
+    }
+}
+
 #[cfg(test)]
 #[allow(clippy::expect_used)]
 mod tests {
@@ -162,5 +210,49 @@ mod tests {
 
         let parsed: BoundingBox = serde_json::from_str(&json).expect("deserialize");
         assert_eq!(parsed, bbox);
+    }
+
+    #[test]
+    fn test_image_info_new() {
+        let img = image::DynamicImage::new_rgb8(640, 480);
+        let info = ImageInfo::new("/test/image.jpg", img);
+
+        assert_eq!(info.path, "/test/image.jpg");
+        assert_eq!(info.width, 640);
+        assert_eq!(info.height, 480);
+    }
+
+    #[test]
+    fn test_image_info_dimensions() {
+        let img = image::DynamicImage::new_rgb8(1920, 1080);
+        let info = ImageInfo::new("test.png", img);
+
+        let dims = info.dimensions();
+        assert_eq!(dims.width, 1920);
+        assert_eq!(dims.height, 1080);
+    }
+
+    #[test]
+    fn test_image_info_conversions() {
+        let img = image::DynamicImage::new_rgb8(100, 100);
+        let info = ImageInfo::new("test.png", img);
+
+        // Test conversions don't panic
+        let rgb = info.to_rgb8();
+        assert_eq!(rgb.dimensions(), (100, 100));
+
+        let rgba = info.to_rgba8();
+        assert_eq!(rgba.dimensions(), (100, 100));
+
+        let luma = info.to_luma8();
+        assert_eq!(luma.dimensions(), (100, 100));
+    }
+
+    #[test]
+    fn test_image_info_color_type() {
+        let img = image::DynamicImage::new_rgb8(10, 10);
+        let info = ImageInfo::new("test.png", img);
+
+        assert_eq!(info.color_type(), image::ColorType::Rgb8);
     }
 }

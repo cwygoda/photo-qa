@@ -42,9 +42,9 @@
 - [x] Define module configuration interface
 
 ### 2.4 Image Abstraction
-- [ ] Create internal `Image` type wrapping decoded data
-- [ ] Support RGB/RGBA pixel access
-- [ ] Metadata extraction interface (dimensions, format)
+- [x] Create internal `Image` type wrapping decoded data
+- [x] Support RGB/RGBA pixel access
+- [x] Metadata extraction interface (dimensions, format)
 
 ---
 
