@@ -6,8 +6,10 @@
 //! - U²-Net / IS-Net (saliency detection)
 
 mod device;
+mod loader;
 
 pub use device::get_device;
+pub use loader::{load_safetensors, LazyModel};
 
 // TODO: Add model implementations
 // mod retinaface;
