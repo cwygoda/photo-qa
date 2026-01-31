@@ -22,7 +22,11 @@ impl<T: Send + Sync> LazyModel<T> {
     ///
     /// The model will not be loaded until `get()` is called.
     #[must_use]
-    pub fn new(path: impl AsRef<Path>, device: Device, builder: fn(VarBuilder) -> Result<T>) -> Self {
+    pub fn new(
+        path: impl AsRef<Path>,
+        device: Device,
+        builder: fn(VarBuilder) -> Result<T>,
+    ) -> Self {
         Self {
             path: path.as_ref().to_path_buf(),
             device,

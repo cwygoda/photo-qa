@@ -79,24 +79,24 @@
 ## Phase 4: Inference Engine (`photo-qa-core/inference`)
 
 ### 4.1 Candle Integration
-- [ ] Add `candle-core`, `candle-nn` dependencies
-- [ ] Configure Metal backend (macOS)
-- [ ] Configure CUDA backend (optional feature)
-- [ ] CPU fallback with auto-detection
+- [x] Add `candle-core`, `candle-nn` dependencies
+- [x] Configure Metal backend (macOS)
+- [x] Configure CUDA backend (optional feature)
+- [x] CPU fallback with auto-detection
 
 ### 4.2 Model Loading
-- [ ] Safetensors loading utility
-- [ ] Model path resolution (XDG_DATA_HOME)
-- [ ] SHA256 checksum verification
-- [ ] Lazy model loading (on first use)
+- [x] Safetensors loading utility
+- [x] Model path resolution (XDG_DATA_HOME)
+- [x] SHA256 checksum verification
+- [x] Lazy model loading (on first use)
 
 ### 4.3 Model Management Adapter
-- [ ] Model inventory definition (name, size, checksum, URL)
-- [ ] Download from GitHub Releases
-- [ ] Progress reporting during download
-- [ ] `models fetch` implementation
-- [ ] `models list` implementation
-- [ ] `models path` implementation
+- [x] Model inventory definition (name, size, checksum, URL)
+- [x] Download from GitHub Releases
+- [x] Progress reporting during download
+- [x] `models fetch` implementation
+- [x] `models list` implementation
+- [x] `models path` implementation
 
 ---
 
