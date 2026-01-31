@@ -29,25 +29,11 @@ fn main() -> Result<()> {
         Some(Commands::Check(ref args)) => commands::check::run(args),
         Some(Commands::Models(ref args)) => commands::models::run(args),
         None => {
-            // Default behavior: run check with paths from cli
-            if cli.paths.is_empty() {
+            // Default behavior: run check with flattened args
+            if cli.check.paths.is_empty() {
                 anyhow::bail!("No paths specified. Use --help for usage information.");
             }
-            let args = commands::check::CheckArgs {
-                paths: cli.paths,
-                recursive: cli.recursive,
-                blur: !cli.no_blur,
-                exposure: !cli.no_exposure,
-                eyes: !cli.no_eyes,
-                blur_threshold: cli.blur_threshold,
-                under_threshold: cli.under_threshold,
-                over_threshold: cli.over_threshold,
-                ear_threshold: cli.ear_threshold,
-                exif: cli.exif,
-                progress: cli.progress,
-                quiet: cli.quiet,
-            };
-            commands::check::run(&args)
+            commands::check::run(&cli.check)
         }
     }
 }

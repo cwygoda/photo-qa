@@ -46,17 +46,14 @@ impl QaModule for EyesModule {
         "eyes"
     }
 
-    fn analyze(&self, image: &ImageInfo) -> anyhow::Result<Vec<Issue>> {
+    fn analyze(&self, _image: &ImageInfo) -> anyhow::Result<Vec<Issue>> {
         // TODO: Implement closed eyes detection
         // 1. Run RetinaFace to detect faces
         // 2. For each face, extract 68-point landmarks
         // 3. Calculate EAR for each eye
         // 4. Calibrate threshold based on face geometry
         // 5. Report per-face results
-
-        let _ = (image, &self.config);
-
-        // Placeholder: return no issues
+        let _ = &self.config; // Will be used when implemented
         Ok(vec![])
     }
 }

@@ -46,16 +46,13 @@ impl QaModule for BlurModule {
         "blur"
     }
 
-    fn analyze(&self, image: &ImageInfo) -> anyhow::Result<Vec<Issue>> {
+    fn analyze(&self, _image: &ImageInfo) -> anyhow::Result<Vec<Issue>> {
         // TODO: Implement blur detection
         // 1. Convert to grayscale
         // 2. Detect subject region (edge density or saliency model)
         // 3. Calculate Laplacian variance in subject region
         // 4. Classify blur type via FFT analysis
-
-        let _ = (image, &self.config);
-
-        // Placeholder: return no issues
+        let _ = &self.config; // Will be used when implemented
         Ok(vec![])
     }
 }

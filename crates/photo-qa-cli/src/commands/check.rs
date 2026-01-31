@@ -3,10 +3,10 @@
 use anyhow::Result;
 use clap::Args;
 use std::path::PathBuf;
-use tracing::info;
+use tracing::{info, warn};
 
-/// Arguments for the check command
-#[derive(Args)]
+/// Shared arguments for image analysis.
+#[derive(Args, Clone)]
 #[allow(clippy::struct_excessive_bools)]
 pub struct CheckArgs {
     /// Files or directories to analyze
@@ -16,17 +16,17 @@ pub struct CheckArgs {
     #[arg(short, long)]
     pub recursive: bool,
 
-    /// Enable blur detection
-    #[arg(long, default_value = "true")]
-    pub blur: bool,
+    /// Disable blur detection
+    #[arg(long)]
+    pub no_blur: bool,
 
-    /// Enable exposure analysis
-    #[arg(long, default_value = "true")]
-    pub exposure: bool,
+    /// Disable exposure analysis
+    #[arg(long)]
+    pub no_exposure: bool,
 
-    /// Enable closed-eyes detection
-    #[arg(long, default_value = "true")]
-    pub eyes: bool,
+    /// Disable closed-eyes detection
+    #[arg(long)]
+    pub no_eyes: bool,
 
     /// Blur score threshold (0.0-1.0)
     #[arg(long, default_value = "0.5")]
@@ -75,6 +75,6 @@ pub fn run(args: &CheckArgs) -> Result<()> {
         info!("Would analyze: {}", path.display());
     }
 
-    println!("Check command not yet implemented");
+    warn!("Check command not yet implemented");
     Ok(())
 }

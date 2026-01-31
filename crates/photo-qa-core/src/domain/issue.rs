@@ -17,6 +17,7 @@ pub struct Issue {
 }
 
 /// The type of quality issue.
+#[non_exhaustive]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum IssueType {
@@ -51,6 +52,7 @@ pub struct BlurDetails {
 }
 
 /// Type of blur detected.
+#[non_exhaustive]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum BlurType {
@@ -76,6 +78,7 @@ pub struct ExposureDetails {
 }
 
 /// Direction of exposure issue.
+#[non_exhaustive]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ExposureDirection {

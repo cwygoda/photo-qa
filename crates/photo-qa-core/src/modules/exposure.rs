@@ -49,16 +49,13 @@ impl QaModule for ExposureModule {
         "exposure"
     }
 
-    fn analyze(&self, image: &ImageInfo) -> anyhow::Result<Vec<Issue>> {
+    fn analyze(&self, _image: &ImageInfo) -> anyhow::Result<Vec<Issue>> {
         // TODO: Implement exposure analysis
         // 1. Convert to luminance channel
         // 2. Compute histogram (256 bins)
         // 3. Calculate 5th and 95th percentiles
         // 4. Score under/overexposure based on clipping
-
-        let _ = (image, &self.config);
-
-        // Placeholder: return no issues
+        let _ = &self.config; // Will be used when implemented
         Ok(vec![])
     }
 }

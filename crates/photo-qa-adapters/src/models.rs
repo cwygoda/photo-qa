@@ -6,6 +6,10 @@ use std::fs;
 use std::path::PathBuf;
 use tracing::{debug, info};
 
+/// Placeholder checksum indicating verification should be skipped.
+const PLACEHOLDER_CHECKSUM: &str =
+    "0000000000000000000000000000000000000000000000000000000000000000";
+
 /// Model metadata.
 #[derive(Debug, Clone)]
 pub struct ModelInfo {
@@ -13,7 +17,7 @@ pub struct ModelInfo {
     pub name: &'static str,
     /// Download URL (GitHub releases).
     pub url: &'static str,
-    /// Expected SHA256 hash.
+    /// Expected SHA256 hash. Set to all zeros to skip verification during development.
     pub sha256: &'static str,
     /// Filename in models directory.
     pub filename: &'static str,
@@ -91,18 +95,27 @@ fn download_model(model: &ModelInfo, path: &PathBuf) -> Result<()> {
         .bytes()
         .with_context(|| format!("Failed to read response for {}", model.name))?;
 
-    // Verify checksum
-    let mut hasher = Sha256::new();
-    hasher.update(&bytes);
-    let hash = format!("{:x}", hasher.finalize());
-
-    if hash != model.sha256 {
-        anyhow::bail!(
-            "Checksum mismatch for {}: expected {}, got {}",
-            model.name,
-            model.sha256,
-            hash
+    // Verify checksum (skip if placeholder)
+    if model.sha256 == PLACEHOLDER_CHECKSUM {
+        debug!(
+            "Skipping checksum verification for {} (placeholder checksum)",
+            model.name
         );
+    } else {
+        let mut hasher = Sha256::new();
+        hasher.update(&bytes);
+        let hash = format!("{:x}", hasher.finalize());
+
+        if hash != model.sha256 {
+            anyhow::bail!(
+                "Checksum mismatch for {}: expected {}, got {}. \
+                 Try deleting {} and re-running to download a fresh copy.",
+                model.name,
+                model.sha256,
+                hash,
+                path.display()
+            );
+        }
     }
 
     fs::write(path, &bytes).with_context(|| format!("Failed to write {}", model.name))?;

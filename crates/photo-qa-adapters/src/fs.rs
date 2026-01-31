@@ -4,6 +4,7 @@ use anyhow::{Context, Result};
 use image::GenericImageView;
 use photo_qa_core::{ImageInfo, ImageSource};
 use std::path::{Path, PathBuf};
+use std::sync::OnceLock;
 use tracing::{debug, warn};
 
 /// Supported image extensions.
@@ -14,7 +15,15 @@ const RAW_EXTENSIONS: &[&str] = &["cr2", "cr3", "nef", "arw", "raf", "dng", "orf
 pub struct FsImageSource {
     paths: Vec<PathBuf>,
     recursive: bool,
+    /// Cached file list to avoid double traversal.
+    cached_files: OnceLock<Vec<PathBuf>>,
 }
+
+// Static assertion that FsImageSource is Send + Sync
+const _: () = {
+    const fn assert_send_sync<T: Send + Sync>() {}
+    let _ = assert_send_sync::<FsImageSource>;
+};
 
 impl FsImageSource {
     /// Creates a new filesystem image source.
@@ -25,28 +34,35 @@ impl FsImageSource {
     /// * `recursive` - Whether to recurse into subdirectories
     #[must_use]
     pub const fn new(paths: Vec<PathBuf>, recursive: bool) -> Self {
-        Self { paths, recursive }
+        Self {
+            paths,
+            recursive,
+            cached_files: OnceLock::new(),
+        }
     }
 
     /// Collects all image files from the configured paths.
-    fn collect_files(&self) -> Vec<PathBuf> {
-        let mut files = Vec::new();
+    /// Results are cached to avoid double traversal.
+    fn collect_files(&self) -> &[PathBuf] {
+        self.cached_files.get_or_init(|| {
+            let mut files = Vec::new();
 
-        for path in &self.paths {
-            if path.is_file() {
-                if is_supported_image(path) {
-                    files.push(path.clone());
+            for path in &self.paths {
+                if path.is_file() {
+                    if is_supported_image(path) {
+                        files.push(path.clone());
+                    } else {
+                        warn!("Unsupported file type: {}", path.display());
+                    }
+                } else if path.is_dir() {
+                    self.collect_from_dir(path, &mut files);
                 } else {
-                    warn!("Unsupported file type: {}", path.display());
+                    warn!("Path does not exist: {}", path.display());
                 }
-            } else if path.is_dir() {
-                self.collect_from_dir(path, &mut files);
-            } else {
-                warn!("Path does not exist: {}", path.display());
             }
-        }
 
-        files
+            files
+        })
     }
 
     fn collect_from_dir(&self, dir: &Path, files: &mut Vec<PathBuf>) {
@@ -58,7 +74,14 @@ impl FsImageSource {
             }
         };
 
-        for entry in entries.flatten() {
+        for entry in entries {
+            let entry = match entry {
+                Ok(e) => e,
+                Err(e) => {
+                    warn!("Failed to read directory entry in {}: {e}", dir.display());
+                    continue;
+                }
+            };
             let path = entry.path();
             if path.is_file() && is_supported_image(&path) {
                 files.push(path);
@@ -74,7 +97,7 @@ impl ImageSource for FsImageSource {
         let files = self.collect_files();
         debug!("Found {} image files", files.len());
 
-        Box::new(files.into_iter().map(|path| load_image(&path)))
+        Box::new(files.iter().map(|path| load_image(path)))
     }
 
     fn count_hint(&self) -> Option<usize> {
