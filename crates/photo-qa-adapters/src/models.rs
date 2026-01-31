@@ -2,13 +2,20 @@
 
 use anyhow::{Context, Result};
 use sha2::{Digest, Sha256};
-use std::fs;
+use std::fs::{self, File};
+use std::io::Write;
 use std::path::PathBuf;
 use tracing::{debug, info};
 
 /// Placeholder checksum indicating verification should be skipped.
 const PLACEHOLDER_CHECKSUM: &str =
     "0000000000000000000000000000000000000000000000000000000000000000";
+
+/// Progress callback for download operations.
+///
+/// Called with `(model_name, downloaded_bytes, total_bytes)`.
+/// `total_bytes` is `None` if the server doesn't provide `Content-Length`.
+pub type ProgressCallback = Box<dyn Fn(&str, u64, Option<u64>) + Send>;
 
 /// Model metadata.
 #[derive(Debug, Clone)]
@@ -65,6 +72,22 @@ pub fn models_dir() -> PathBuf {
 /// - A model download fails
 /// - A model's checksum doesn't match
 pub fn ensure_models() -> Result<()> {
+    ensure_models_with_progress(None)
+}
+
+/// Ensures all required models are downloaded, with progress reporting.
+///
+/// # Arguments
+///
+/// * `progress` - Optional callback for download progress updates
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - The models directory cannot be created
+/// - A model download fails
+/// - A model's checksum doesn't match
+pub fn ensure_models_with_progress(progress: Option<&ProgressCallback>) -> Result<()> {
     let dir = models_dir();
     fs::create_dir_all(&dir).context("Failed to create models directory")?;
 
@@ -73,7 +96,7 @@ pub fn ensure_models() -> Result<()> {
         if path.exists() {
             debug!("Model {} already exists", model.name);
         } else {
-            download_model(model, &path)?;
+            download_model(model, &path, progress)?;
         }
     }
 
@@ -81,7 +104,11 @@ pub fn ensure_models() -> Result<()> {
 }
 
 /// Downloads a model from its URL.
-fn download_model(model: &ModelInfo, path: &PathBuf) -> Result<()> {
+fn download_model(
+    model: &ModelInfo,
+    path: &PathBuf,
+    progress: Option<&ProgressCallback>,
+) -> Result<()> {
     info!("Downloading model: {}", model.name);
 
     let response = reqwest::blocking::get(model.url)
@@ -91,9 +118,41 @@ fn download_model(model: &ModelInfo, path: &PathBuf) -> Result<()> {
         anyhow::bail!("Download failed with status: {}", response.status());
     }
 
-    let bytes = response
-        .bytes()
-        .with_context(|| format!("Failed to read response for {}", model.name))?;
+    let total_size = response.content_length();
+    let mut downloaded: u64 = 0;
+    let mut hasher = Sha256::new();
+
+    // Create temporary file for download
+    let temp_path = path.with_extension("tmp");
+    let mut file =
+        File::create(&temp_path).with_context(|| format!("Failed to create {}", model.name))?;
+
+    // Stream download with progress
+    let mut reader = response;
+    let mut buffer = [0u8; 8192];
+
+    loop {
+        let bytes_read = std::io::Read::read(&mut reader, &mut buffer)
+            .with_context(|| format!("Failed to read response for {}", model.name))?;
+
+        if bytes_read == 0 {
+            break;
+        }
+
+        hasher.update(&buffer[..bytes_read]);
+        file.write_all(&buffer[..bytes_read])
+            .with_context(|| format!("Failed to write {}", model.name))?;
+
+        downloaded += bytes_read as u64;
+
+        if let Some(cb) = progress {
+            cb(model.name, downloaded, total_size);
+        }
+    }
+
+    file.flush()
+        .with_context(|| format!("Failed to flush {}", model.name))?;
+    drop(file);
 
     // Verify checksum (skip if placeholder)
     if model.sha256 == PLACEHOLDER_CHECKSUM {
@@ -102,11 +161,11 @@ fn download_model(model: &ModelInfo, path: &PathBuf) -> Result<()> {
             model.name
         );
     } else {
-        let mut hasher = Sha256::new();
-        hasher.update(&bytes);
         let hash = format!("{:x}", hasher.finalize());
 
         if hash != model.sha256 {
+            // Remove temp file on checksum failure
+            let _ = fs::remove_file(&temp_path);
             anyhow::bail!(
                 "Checksum mismatch for {}: expected {}, got {}. \
                  Try deleting {} and re-running to download a fresh copy.",
@@ -118,9 +177,10 @@ fn download_model(model: &ModelInfo, path: &PathBuf) -> Result<()> {
         }
     }
 
-    fs::write(path, &bytes).with_context(|| format!("Failed to write {}", model.name))?;
+    // Rename temp file to final path
+    fs::rename(&temp_path, path).with_context(|| format!("Failed to rename {}", model.name))?;
 
-    info!("Downloaded {} ({} bytes)", model.name, bytes.len());
+    info!("Downloaded {} ({} bytes)", model.name, downloaded);
     Ok(())
 }
 
