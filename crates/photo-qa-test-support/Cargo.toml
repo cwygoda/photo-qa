@@ -1,0 +1,17 @@
+[package]
+name = "photo-qa-test-support"
+description = "Test utilities and mocks for photo-qa"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[dependencies]
+photo-qa-core.workspace = true
+anyhow.workspace = true
+image.workspace = true
+
+[lints]
+workspace = true

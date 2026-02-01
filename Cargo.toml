@@ -52,6 +52,7 @@ sha2 = "0.10"
 # Internal crates
 photo-qa-core = { path = "crates/photo-qa-core" }
 photo-qa-adapters = { path = "crates/photo-qa-adapters" }
+photo-qa-test-support = { path = "crates/photo-qa-test-support" }
 
 [workspace.lints.rust]
 unsafe_code = "deny"

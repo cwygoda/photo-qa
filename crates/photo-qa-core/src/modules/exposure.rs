@@ -581,4 +581,231 @@ mod tests {
             analysis.over_score
         );
     }
+
+    // === Threshold Sweep Validation ===
+
+    #[test]
+    fn test_threshold_sweep_under() {
+        // Dark image with known under_score
+        let img = image::GrayImage::from_fn(100, 100, |_, _| image::Luma([5u8]));
+        let info = ImageInfo::new("dark.jpg", image::DynamicImage::ImageLuma8(img));
+
+        // Sweep thresholds from 0.0 to 1.0 and verify consistent behavior
+        let scores_and_results: Vec<_> = [0.0f32, 0.1, 0.3, 0.5, 0.7, 0.9, 1.0]
+            .into_iter()
+            .map(|threshold| {
+                let config = ExposureConfig {
+                    under_threshold: threshold,
+                    over_threshold: 1.0, // Disable over detection
+                    ..Default::default()
+                };
+                let module = ExposureModule::new(config);
+                let issues = module.analyze(&info).expect("analysis should succeed");
+                (threshold, !issues.is_empty())
+            })
+            .collect();
+
+        // Lower thresholds should flag more, higher should flag less
+        // Find transition point where detection stops
+        let mut found_transition = false;
+        for window in scores_and_results.windows(2) {
+            let (_, flagged1) = window[0];
+            let (t2, flagged2) = window[1];
+
+            // Once we stop detecting, we should never start again
+            if flagged1 && !flagged2 {
+                found_transition = true;
+            }
+            if found_transition {
+                assert!(!flagged2, "threshold {t2} should not flag after transition");
+            }
+        }
+    }
+
+    #[test]
+    fn test_threshold_sweep_over() {
+        // Bright image with known over_score
+        let img = image::GrayImage::from_fn(100, 100, |_, _| image::Luma([250u8]));
+        let info = ImageInfo::new("bright.jpg", image::DynamicImage::ImageLuma8(img));
+
+        let scores_and_results: Vec<_> = [0.0f32, 0.1, 0.3, 0.5, 0.7, 0.9, 1.0]
+            .into_iter()
+            .map(|threshold| {
+                let config = ExposureConfig {
+                    under_threshold: 1.0, // Disable under detection
+                    over_threshold: threshold,
+                    ..Default::default()
+                };
+                let module = ExposureModule::new(config);
+                let issues = module.analyze(&info).expect("analysis should succeed");
+                (threshold, !issues.is_empty())
+            })
+            .collect();
+
+        // Similar verification
+        let mut found_transition = false;
+        for window in scores_and_results.windows(2) {
+            let (_, flagged1) = window[0];
+            let (t2, flagged2) = window[1];
+
+            if flagged1 && !flagged2 {
+                found_transition = true;
+            }
+            if found_transition {
+                assert!(!flagged2, "threshold {t2} should not flag after transition");
+            }
+        }
+    }
+
+    #[test]
+    fn test_threshold_boundary_exact_under() {
+        let img = image::GrayImage::from_fn(100, 100, |_, _| image::Luma([0u8]));
+        let config = ExposureConfig::default();
+        let analysis = ExposureAnalysis::analyze(&img, &config);
+
+        // Test with threshold exactly at the score
+        let threshold = analysis.under_score;
+        let exact_config = ExposureConfig {
+            under_threshold: threshold,
+            over_threshold: 1.0,
+            ..Default::default()
+        };
+        let module = ExposureModule::new(exact_config);
+        let info = ImageInfo::new("test.jpg", image::DynamicImage::ImageLuma8(img));
+        let issues = module.analyze(&info).expect("analysis");
+
+        // At exact threshold, score >= threshold, so should be flagged
+        assert!(!issues.is_empty(), "exact threshold should flag");
+    }
+
+    #[test]
+    fn test_threshold_boundary_exact_over() {
+        let img = image::GrayImage::from_fn(100, 100, |_, _| image::Luma([255u8]));
+        let config = ExposureConfig::default();
+        let analysis = ExposureAnalysis::analyze(&img, &config);
+
+        let threshold = analysis.over_score;
+        let exact_config = ExposureConfig {
+            under_threshold: 1.0,
+            over_threshold: threshold,
+            ..Default::default()
+        };
+        let module = ExposureModule::new(exact_config);
+        let info = ImageInfo::new("test.jpg", image::DynamicImage::ImageLuma8(img));
+        let issues = module.analyze(&info).expect("analysis");
+
+        assert!(!issues.is_empty(), "exact threshold should flag");
+    }
+
+    // === Edge Cases ===
+
+    #[test]
+    fn test_empty_histogram() {
+        let hist = Histogram {
+            bins: [0u64; 256],
+            total: 0,
+        };
+
+        assert_eq!(hist.percentile(0.5), 0);
+        assert!((hist.mean() - 0.0).abs() < f64::EPSILON);
+        assert!((hist.std_dev() - 0.0).abs() < f64::EPSILON);
+        assert!((hist.fraction_below(128) - 0.0).abs() < f64::EPSILON);
+        assert!((hist.fraction_above(128) - 0.0).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn test_single_value_histogram() {
+        // All pixels same value = 0 std_dev
+        let img = image::GrayImage::from_fn(10, 10, |_, _| image::Luma([100u8]));
+        let hist = Histogram::from_luma(&img);
+
+        assert_eq!(hist.total(), 100);
+        assert!((hist.mean() - 100.0).abs() < f64::EPSILON);
+        assert!((hist.std_dev() - 0.0).abs() < f64::EPSILON);
+        assert_eq!(hist.percentile(0.5), 100);
+    }
+
+    #[test]
+    fn test_clip_levels_boundary() {
+        // Test shadow/highlight clip level boundaries
+        let config = ExposureConfig {
+            shadow_clip_level: 10,
+            highlight_clip_level: 245,
+            ..Default::default()
+        };
+
+        // Image with values at exact clip levels
+        let mut img = image::GrayImage::new(100, 100);
+        for (i, _, pixel) in img.enumerate_pixels_mut() {
+            // Half at shadow clip, half at highlight clip
+            pixel.0[0] = if i < 50 { 10 } else { 245 };
+        }
+
+        let analysis = ExposureAnalysis::analyze(&img, &config);
+
+        // Shadow fraction should count pixels <= 10
+        // Highlight fraction should count pixels >= 245
+        assert!(
+            analysis.histogram.fraction_below(10) > 0.0,
+            "should count shadow pixels"
+        );
+        assert!(
+            analysis.histogram.fraction_above(245) > 0.0,
+            "should count highlight pixels"
+        );
+    }
+
+    #[test]
+    fn test_1x1_image() {
+        let img = image::GrayImage::from_fn(1, 1, |_, _| image::Luma([128u8]));
+        let info = ImageInfo::new("1x1.jpg", image::DynamicImage::ImageLuma8(img));
+
+        let module = ExposureModule::default();
+        let result = module.analyze(&info);
+
+        assert!(result.is_ok(), "1x1 image should not cause error");
+    }
+
+    #[test]
+    fn test_extreme_shadow_clip_level() {
+        // Shadow clip at 0 means only pure black counts
+        let config = ExposureConfig {
+            shadow_clip_level: 0,
+            ..Default::default()
+        };
+
+        let img = image::GrayImage::from_fn(100, 100, |_, _| image::Luma([1u8]));
+        let analysis = ExposureAnalysis::analyze(&img, &config);
+
+        assert!(
+            (analysis.histogram.fraction_below(0) - 0.0).abs() < f64::EPSILON,
+            "no pixels at 0 should mean 0 shadow fraction"
+        );
+    }
+
+    #[test]
+    fn test_extreme_highlight_clip_level() {
+        // Highlight clip at 255 means only pure white counts
+        let config = ExposureConfig {
+            highlight_clip_level: 255,
+            ..Default::default()
+        };
+
+        let img = image::GrayImage::from_fn(100, 100, |_, _| image::Luma([254u8]));
+        let analysis = ExposureAnalysis::analyze(&img, &config);
+
+        assert!(
+            (analysis.histogram.fraction_above(255) - 0.0).abs() < f64::EPSILON,
+            "no pixels at 255 should mean 0 highlight fraction"
+        );
+    }
+
+    #[test]
+    fn test_percentile_edge_cases() {
+        let img = image::GrayImage::from_fn(256, 1, |x, _| image::Luma([x as u8]));
+        let hist = Histogram::from_luma(&img);
+
+        assert_eq!(hist.percentile(0.0), 0, "p0 should be 0");
+        assert_eq!(hist.percentile(1.0), 255, "p100 should be 255");
+    }
 }

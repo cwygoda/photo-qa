@@ -39,6 +39,9 @@ run *ARGS:
 test:
     cargo test
 
+# Run all tests including accuracy benchmarks (requires datasets)
+test-all: test bench-accuracy
+
 # Run tests with output
 test-verbose:
     cargo test -- --nocapture
@@ -132,3 +135,19 @@ watch:
 # Watch for changes and run check
 watch-check:
     cargo watch -x check
+
+# === Benchmarks ===
+
+# Run accuracy benchmarks (requires datasets)
+bench-accuracy:
+    cargo test --test accuracy -- --ignored --nocapture
+
+# Run accuracy benchmarks for specific module
+bench-accuracy-blur:
+    cargo test --test accuracy blur -- --ignored --nocapture
+
+bench-accuracy-exposure:
+    cargo test --test accuracy exposure -- --ignored --nocapture
+
+bench-accuracy-eyes:
+    cargo test --test accuracy eyes -- --ignored --nocapture

@@ -930,4 +930,298 @@ mod tests {
         assert!(json.contains("motion"));
         assert!(json.contains("subject_bbox"));
     }
+
+    // === Threshold Boundary Tests ===
+
+    #[test]
+    fn test_threshold_boundary_exact_match() {
+        // Image with blur score exactly at threshold should NOT be flagged
+        // (score < threshold means no issue)
+        let config = BlurConfig {
+            threshold: 0.5,
+            laplacian_sharp_threshold: 100.0,
+            ..Default::default()
+        };
+
+        // Variance of 50.0 gives blur_score = 1.0 - 50.0/100.0 = 0.5
+        // This is NOT less than threshold, so should flag
+        let score = compute_blur_score(50.0, &config);
+        assert!((score - 0.5).abs() < f32::EPSILON);
+
+        // Variance of 50.001 gives score just below 0.5
+        let score_just_below = compute_blur_score(50.001, &config);
+        assert!(score_just_below < 0.5);
+    }
+
+    #[test]
+    fn test_threshold_zero_flags_most_images() {
+        // Threshold 0.0 means score >= 0.0 is flagged
+        // Sharp images have score = 0.0, so they're NOT flagged (score < threshold is pass)
+        // This test verifies the threshold boundary behavior with a slightly blurry image
+        let img = image::GrayImage::from_fn(128, 128, |x, _| {
+            // Gradient - low variance, will have some blur score
+            let val = ((x * 255) / 128) as u8;
+            image::Luma([val])
+        });
+        let info = ImageInfo::new("gradient.jpg", image::DynamicImage::ImageLuma8(img));
+
+        let config = BlurConfig {
+            threshold: 0.0, // Everything with score >= 0.0 is flagged
+            ..Default::default()
+        };
+        let module = BlurModule::new(config);
+        let issues = module.analyze(&info).expect("analysis should succeed");
+
+        // Gradient has positive blur score, so should be flagged at threshold 0.0
+        assert!(
+            !issues.is_empty(),
+            "gradient image at threshold 0.0 should be flagged"
+        );
+    }
+
+    #[test]
+    fn test_threshold_one_flags_nothing() {
+        let img = image::GrayImage::from_fn(128, 128, |_, _| image::Luma([128u8]));
+        let info = ImageInfo::new("blurry.jpg", image::DynamicImage::ImageLuma8(img));
+
+        let config = BlurConfig {
+            threshold: 1.1, // Above max possible score
+            ..Default::default()
+        };
+        let module = BlurModule::new(config);
+        let issues = module.analyze(&info).expect("analysis should succeed");
+
+        assert!(
+            issues.is_empty(),
+            "threshold > 1.0 should not flag anything"
+        );
+    }
+
+    #[test]
+    fn test_laplacian_threshold_boundary() {
+        let config = BlurConfig::default();
+
+        // Exactly at laplacian_sharp_threshold should give score = 0.0
+        let score_at_threshold = compute_blur_score(100.0, &config);
+        assert!(
+            (score_at_threshold - 0.0).abs() < f32::EPSILON,
+            "variance at threshold should give 0 score"
+        );
+
+        // Just below should give small positive score
+        let score_below = compute_blur_score(99.0, &config);
+        assert!(
+            score_below > 0.0 && score_below < 0.05,
+            "variance just below threshold should give small score: {score_below}"
+        );
+    }
+
+    // === Edge Case Tests ===
+
+    #[test]
+    fn test_1x1_image() {
+        let img = image::GrayImage::from_fn(1, 1, |_, _| image::Luma([128u8]));
+        let info = ImageInfo::new("1x1.jpg", image::DynamicImage::ImageLuma8(img));
+
+        let module = BlurModule::default();
+        let result = module.analyze(&info);
+
+        // Should not panic or error
+        assert!(result.is_ok(), "1x1 image should not cause error");
+    }
+
+    #[test]
+    fn test_2x2_image() {
+        let img = image::GrayImage::from_fn(2, 2, |_, _| image::Luma([128u8]));
+        let info = ImageInfo::new("2x2.jpg", image::DynamicImage::ImageLuma8(img));
+
+        let module = BlurModule::default();
+        let result = module.analyze(&info);
+
+        assert!(result.is_ok(), "2x2 image should not cause error");
+    }
+
+    #[test]
+    fn test_3x3_image_minimal_laplacian() {
+        // 3x3 is the minimum size for Laplacian (1 interior pixel)
+        let img = image::GrayImage::from_fn(3, 3, |x, y| {
+            // Center pixel different from edges to create some variance
+            if x == 1 && y == 1 {
+                image::Luma([255u8])
+            } else {
+                image::Luma([0u8])
+            }
+        });
+
+        let variance = compute_laplacian_variance(&img);
+        // With single center pixel at 255 surrounded by 0s, Laplacian = 0+0+0+0 - 4*255 = -1020
+        // Variance of single value is 0, but we have one sample
+        // Actually: E[X²] - E[X]² = (-1020)² - (-1020)² = 0 for single sample
+        // For 3x3, we only have 1 interior pixel, so variance = 0 (single sample)
+        // This is expected behavior - need at least multiple interior pixels for meaningful variance
+        assert!(
+            variance >= 0.0,
+            "3x3 image variance should be >= 0, got {variance}"
+        );
+    }
+
+    #[test]
+    fn test_extreme_values_all_black() {
+        let img = image::GrayImage::from_fn(64, 64, |_, _| image::Luma([0u8]));
+        let info = ImageInfo::new("black.jpg", image::DynamicImage::ImageLuma8(img));
+
+        let module = BlurModule::default();
+        let result = module.analyze(&info);
+
+        assert!(result.is_ok());
+        // All-black image has zero variance, should be flagged as blurry
+        let issues = result.expect("result");
+        assert!(
+            !issues.is_empty(),
+            "all-black image should be detected as blurry"
+        );
+    }
+
+    #[test]
+    fn test_extreme_values_all_white() {
+        let img = image::GrayImage::from_fn(64, 64, |_, _| image::Luma([255u8]));
+        let info = ImageInfo::new("white.jpg", image::DynamicImage::ImageLuma8(img));
+
+        let module = BlurModule::default();
+        let result = module.analyze(&info);
+
+        assert!(result.is_ok());
+        // All-white image has zero variance, should be flagged as blurry
+        let issues = result.expect("result");
+        assert!(
+            !issues.is_empty(),
+            "all-white image should be detected as blurry"
+        );
+    }
+
+    #[test]
+    fn test_extreme_contrast() {
+        // Half black, half white (extreme contrast)
+        let img = image::GrayImage::from_fn(128, 128, |x, _| {
+            if x < 64 {
+                image::Luma([0u8])
+            } else {
+                image::Luma([255u8])
+            }
+        });
+        let info = ImageInfo::new("contrast.jpg", image::DynamicImage::ImageLuma8(img));
+
+        let module = BlurModule::default();
+        let result = module.analyze(&info);
+
+        assert!(result.is_ok());
+        // High contrast edge - just verify it doesn't crash
+        // The single vertical edge may or may not be enough depending on analysis
+        let _ = result.expect("result");
+    }
+
+    #[test]
+    fn test_narrow_image() {
+        // Very wide, very short
+        let img = image::GrayImage::from_fn(500, 5, |x, _| {
+            if x % 10 < 5 {
+                image::Luma([0u8])
+            } else {
+                image::Luma([255u8])
+            }
+        });
+        let info = ImageInfo::new("wide.jpg", image::DynamicImage::ImageLuma8(img));
+
+        let module = BlurModule::default();
+        let result = module.analyze(&info);
+
+        assert!(result.is_ok(), "narrow image should not cause error");
+    }
+
+    #[test]
+    fn test_tall_image() {
+        // Very tall, very narrow
+        let img = image::GrayImage::from_fn(5, 500, |_, y| {
+            if y % 10 < 5 {
+                image::Luma([0u8])
+            } else {
+                image::Luma([255u8])
+            }
+        });
+        let info = ImageInfo::new("tall.jpg", image::DynamicImage::ImageLuma8(img));
+
+        let module = BlurModule::default();
+        let result = module.analyze(&info);
+
+        assert!(result.is_ok(), "tall image should not cause error");
+    }
+
+    #[test]
+    fn test_laplacian_variance_empty_result() {
+        // Image too small for Laplacian (need at least 3x3 for 1 interior pixel)
+        let img = image::GrayImage::from_fn(2, 2, |_, _| image::Luma([128u8]));
+        let variance = compute_laplacian_variance(&img);
+
+        assert!(
+            (variance - 0.0).abs() < f64::EPSILON,
+            "too-small image should return 0 variance"
+        );
+    }
+
+    #[test]
+    fn test_edge_density_empty_result() {
+        // Image too small for Sobel (need at least 3x3)
+        let img = image::GrayImage::from_fn(2, 2, |_, _| image::Luma([128u8]));
+        let density = compute_edge_density(&img);
+
+        assert!(
+            (density - 0.0).abs() < f64::EPSILON,
+            "too-small image should return 0 edge density"
+        );
+    }
+
+    #[test]
+    fn test_config_with_custom_window_size() {
+        let config = BlurConfig {
+            window_size: 32,
+            window_stride: 16,
+            ..Default::default()
+        };
+
+        let img = image::GrayImage::from_fn(128, 128, |x, y| {
+            if (x / 8 + y / 8) % 2 == 0 {
+                image::Luma([255u8])
+            } else {
+                image::Luma([0u8])
+            }
+        });
+
+        let analysis = BlurAnalysis::analyze(&img, &config);
+        // Should not panic with custom window size
+        assert!(analysis.global_variance > 0.0);
+    }
+
+    #[test]
+    fn test_config_window_larger_than_image() {
+        let config = BlurConfig {
+            window_size: 256, // Larger than image
+            window_stride: 128,
+            ..Default::default()
+        };
+
+        let img = image::GrayImage::from_fn(64, 64, |x, y| {
+            if (x / 8 + y / 8) % 2 == 0 {
+                image::Luma([255u8])
+            } else {
+                image::Luma([0u8])
+            }
+        });
+
+        let region_scores = compute_region_sharpness(&img, &config);
+        // Should return empty when window > image
+        assert!(
+            region_scores.is_empty(),
+            "should return empty when window > image"
+        );
+    }
 }

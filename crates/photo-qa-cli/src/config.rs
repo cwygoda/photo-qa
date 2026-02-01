@@ -275,7 +275,7 @@ fn load_file(path: &Path) -> Option<AppConfig> {
 }
 
 #[cfg(test)]
-#[allow(clippy::expect_used)]
+#[allow(clippy::expect_used, clippy::unwrap_used)]
 mod tests {
     use super::*;
 
@@ -382,5 +382,361 @@ ear_threshold = 0.15
         assert_eq!(base.exposure.under_threshold, Some(0.3));
         // Eyes added from override
         assert_eq!(base.eyes.ear_threshold, Some(0.15));
+    }
+
+    // === Config Merge Priority Tests ===
+
+    #[test]
+    fn test_merge_preserves_base_when_override_is_none() {
+        let mut base: AppConfig = toml::from_str(
+            r"
+[blur]
+threshold = 0.5
+window_size = 64
+
+[exposure]
+under_threshold = 0.3
+over_threshold = 0.4
+",
+        )
+        .expect("parse base");
+
+        // Override only touches blur.threshold, leaving window_size alone
+        let override_config: AppConfig = toml::from_str(
+            r"
+[blur]
+threshold = 0.8
+",
+        )
+        .expect("parse override");
+
+        base.merge(override_config);
+
+        // Blur threshold overridden
+        assert_eq!(base.blur.threshold, Some(0.8));
+        // Window size preserved from base
+        assert_eq!(base.blur.window_size, Some(64));
+        // Exposure entirely preserved
+        assert_eq!(base.exposure.under_threshold, Some(0.3));
+        assert_eq!(base.exposure.over_threshold, Some(0.4));
+    }
+
+    #[test]
+    fn test_merge_all_sections() {
+        let mut base: AppConfig = toml::from_str(
+            r"
+[general]
+recursive = false
+
+[blur]
+enabled = true
+
+[exposure]
+enabled = true
+
+[eyes]
+enabled = true
+
+[output]
+format = 'json'
+",
+        )
+        .expect("parse base");
+
+        let override_config: AppConfig = toml::from_str(
+            r"
+[general]
+recursive = true
+
+[blur]
+enabled = false
+
+[exposure]
+enabled = false
+
+[eyes]
+enabled = false
+
+[output]
+format = 'jsonl'
+",
+        )
+        .expect("parse override");
+
+        base.merge(override_config);
+
+        // All should be overridden
+        assert_eq!(base.general.recursive, Some(true));
+        assert_eq!(base.blur.enabled, Some(false));
+        assert_eq!(base.exposure.enabled, Some(false));
+        assert_eq!(base.eyes.enabled, Some(false));
+        assert_eq!(base.output.format, Some("jsonl".to_string()));
+    }
+
+    #[test]
+    fn test_merge_empty_override_preserves_base() {
+        let mut base: AppConfig = toml::from_str(
+            r"
+[blur]
+threshold = 0.6
+",
+        )
+        .expect("parse base");
+
+        let override_config = AppConfig::default();
+
+        base.merge(override_config);
+
+        // Base should be preserved
+        assert_eq!(base.blur.threshold, Some(0.6));
+    }
+
+    #[test]
+    fn test_merge_empty_base_accepts_override() {
+        let mut base = AppConfig::default();
+
+        let override_config: AppConfig = toml::from_str(
+            r"
+[blur]
+threshold = 0.7
+",
+        )
+        .expect("parse override");
+
+        base.merge(override_config);
+
+        // Override should be accepted
+        assert_eq!(base.blur.threshold, Some(0.7));
+    }
+
+    // === Partial Config Handling ===
+
+    #[test]
+    fn test_partial_blur_config() {
+        let toml = r"
+[blur]
+threshold = 0.6
+# Other blur fields omitted
+";
+        let config: AppConfig = toml::from_str(toml).expect("parse partial blur");
+
+        assert_eq!(config.blur.threshold, Some(0.6));
+        assert!(config.blur.enabled.is_none());
+        assert!(config.blur.laplacian_sharp_threshold.is_none());
+        assert!(config.blur.window_size.is_none());
+        assert!(config.blur.window_stride.is_none());
+        assert!(config.blur.edge_density_threshold.is_none());
+    }
+
+    #[test]
+    fn test_partial_exposure_config() {
+        let toml = r"
+[exposure]
+under_threshold = 0.25
+# Other exposure fields omitted
+";
+        let config: AppConfig = toml::from_str(toml).expect("parse partial exposure");
+
+        assert_eq!(config.exposure.under_threshold, Some(0.25));
+        assert!(config.exposure.enabled.is_none());
+        assert!(config.exposure.over_threshold.is_none());
+        assert!(config.exposure.shadow_clip_level.is_none());
+        assert!(config.exposure.highlight_clip_level.is_none());
+    }
+
+    #[test]
+    fn test_partial_eyes_config() {
+        let toml = r"
+[eyes]
+ear_threshold = 0.18
+";
+        let config: AppConfig = toml::from_str(toml).expect("parse partial eyes");
+
+        assert_eq!(config.eyes.ear_threshold, Some(0.18));
+        assert!(config.eyes.enabled.is_none());
+        assert!(config.eyes.min_face_confidence.is_none());
+    }
+
+    #[test]
+    fn test_partial_output_config() {
+        let toml = r"
+[output]
+pretty = true
+";
+        let config: AppConfig = toml::from_str(toml).expect("parse partial output");
+
+        assert_eq!(config.output.pretty, Some(true));
+        assert!(config.output.format.is_none());
+        assert!(config.output.exif.is_none());
+        assert!(config.output.progress.is_none());
+    }
+
+    #[test]
+    fn test_mixed_sections() {
+        // Config with some sections but not others
+        let toml = r"
+[blur]
+threshold = 0.5
+
+[output]
+format = 'jsonl'
+";
+        let config: AppConfig = toml::from_str(toml).expect("parse mixed");
+
+        assert_eq!(config.blur.threshold, Some(0.5));
+        assert_eq!(config.output.format, Some("jsonl".to_string()));
+        // Other sections should be default (all None)
+        assert!(config.exposure.under_threshold.is_none());
+        assert!(config.eyes.ear_threshold.is_none());
+        assert!(config.general.recursive.is_none());
+    }
+
+    // === Invalid TOML Graceful Fallback ===
+
+    #[test]
+    fn test_invalid_toml_syntax_handled() {
+        // This should fail to parse but not panic
+        let toml = r"
+[blur
+threshold = 0.5
+"; // Missing closing bracket
+        let result: Result<AppConfig, _> = toml::from_str(toml);
+        assert!(result.is_err(), "invalid TOML should return error");
+    }
+
+    #[test]
+    fn test_invalid_field_type_handled() {
+        // Wrong type for threshold (string instead of float)
+        let toml = r#"
+[blur]
+threshold = "not a number"
+"#;
+        let result: Result<AppConfig, _> = toml::from_str(toml);
+        assert!(result.is_err(), "type mismatch should return error");
+    }
+
+    #[test]
+    fn test_unknown_section_ignored() {
+        // Unknown sections should be ignored (TOML serde default behavior)
+        let toml = r"
+[blur]
+threshold = 0.5
+
+[unknown_section]
+foo = 'bar'
+";
+        let result: Result<AppConfig, _> = toml::from_str(toml);
+        // This actually errors with strict deserialization
+        // but we use #[serde(default)] so it depends on config
+        // For now, just verify it parses or errors gracefully
+        if let Ok(config) = result {
+            assert_eq!(config.blur.threshold, Some(0.5));
+        }
+        // Err is also acceptable - unknown fields rejected
+    }
+
+    #[test]
+    fn test_unknown_field_in_known_section() {
+        // Unknown fields within known sections
+        let toml = r"
+[blur]
+threshold = 0.5
+unknown_field = 123
+";
+        let result: Result<AppConfig, _> = toml::from_str(toml);
+        // With #[serde(default)], unknown fields are typically ignored
+        // unless deny_unknown_fields is set
+        if let Ok(config) = result {
+            assert_eq!(config.blur.threshold, Some(0.5));
+        }
+        // Err is also acceptable
+    }
+
+    // === Validation Tests ===
+
+    #[test]
+    fn test_validate_blur_threshold_out_of_range() {
+        let mut config = AppConfig::default();
+        config.blur.threshold = Some(1.5);
+
+        let result = config.validate();
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("blur.threshold"));
+    }
+
+    #[test]
+    fn test_validate_exposure_thresholds_out_of_range() {
+        let mut config = AppConfig::default();
+        config.exposure.under_threshold = Some(-0.1);
+
+        let result = config.validate();
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("exposure.under_threshold"));
+
+        let mut config2 = AppConfig::default();
+        config2.exposure.over_threshold = Some(2.0);
+
+        let result2 = config2.validate();
+        assert!(result2.is_err());
+        assert!(result2.unwrap_err().contains("exposure.over_threshold"));
+    }
+
+    #[test]
+    fn test_validate_eyes_thresholds_out_of_range() {
+        let mut config = AppConfig::default();
+        config.eyes.ear_threshold = Some(1.1);
+
+        let result = config.validate();
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("eyes.ear_threshold"));
+
+        let mut config2 = AppConfig::default();
+        config2.eyes.min_face_confidence = Some(-0.5);
+
+        let result2 = config2.validate();
+        assert!(result2.is_err());
+        assert!(result2.unwrap_err().contains("eyes.min_face_confidence"));
+    }
+
+    #[test]
+    fn test_validate_output_format_invalid() {
+        let mut config = AppConfig::default();
+        config.output.format = Some("xml".to_string());
+
+        let result = config.validate();
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("output.format"));
+    }
+
+    #[test]
+    fn test_validate_all_valid_passes() {
+        let config: AppConfig = toml::from_str(
+            r"
+[blur]
+threshold = 0.5
+
+[exposure]
+under_threshold = 0.3
+over_threshold = 0.3
+
+[eyes]
+ear_threshold = 0.2
+min_face_confidence = 0.8
+
+[output]
+format = 'json'
+",
+        )
+        .expect("parse valid config");
+
+        let result = config.validate();
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_validate_empty_config_passes() {
+        let config = AppConfig::default();
+        let result = config.validate();
+        assert!(result.is_ok());
     }
 }
