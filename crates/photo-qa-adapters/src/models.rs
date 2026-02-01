@@ -33,16 +33,18 @@ pub struct ModelInfo {
 /// Known models.
 pub const MODELS: &[ModelInfo] = &[
     ModelInfo {
-        name: "retinaface",
-        url: "https://github.com/cwygoda/photo-qa/releases/download/models-v1/retinaface.safetensors",
+        name: "blazeface",
+        url:
+            "https://github.com/cwygoda/photo-qa/releases/download/models-v1/blazeface.safetensors",
         sha256: "0000000000000000000000000000000000000000000000000000000000000000", // TODO: Update with real hash
-        filename: "retinaface.safetensors",
+        filename: "blazeface.safetensors",
     },
     ModelInfo {
-        name: "landmarks68",
-        url: "https://github.com/cwygoda/photo-qa/releases/download/models-v1/landmarks68.safetensors",
+        name: "eye_state",
+        url:
+            "https://github.com/cwygoda/photo-qa/releases/download/models-v1/eye_state.safetensors",
         sha256: "0000000000000000000000000000000000000000000000000000000000000000", // TODO: Update with real hash
-        filename: "landmarks68.safetensors",
+        filename: "eye_state.safetensors",
     },
     ModelInfo {
         name: "u2net",
@@ -222,10 +224,10 @@ mod tests {
 
     #[test]
     fn test_model_path() {
-        let path = model_path("retinaface");
+        let path = model_path("blazeface");
         assert!(path.is_some());
         let path = path.unwrap_or_else(|| panic!("should have path"));
-        assert!(path.ends_with("retinaface.safetensors"));
+        assert!(path.ends_with("blazeface.safetensors"));
     }
 
     #[test]
