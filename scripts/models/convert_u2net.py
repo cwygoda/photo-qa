@@ -1,4 +1,13 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run
+# /// script
+# requires-python = ">=3.11"
+# dependencies = [
+#     "requests",
+#     "safetensors",
+#     "torch",
+#     "tqdm",
+# ]
+# ///
 """
 Convert U²-Net PyTorch model to safetensors format.
 

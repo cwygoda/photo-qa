@@ -2,17 +2,17 @@
 
 Scripts to generate and convert ML models to safetensors format for photo-qa.
 
+All scripts use [PEP 723](https://peps.python.org/pep-0723/) inline metadata,
+so dependencies are installed automatically by `uv run`.
+
 ## Quick Start (Development)
 
 Generate models with random initialization for testing:
 
 ```bash
-uv venv && source .venv/bin/activate
-uv pip install -r requirements.txt
-
-python convert_blazeface.py -o blazeface.safetensors
-python convert_eye_state.py --random-init -o eye_state.safetensors
-python convert_u2net.py --random-init -o u2net.safetensors
+./convert_blazeface.py -o blazeface.safetensors
+./convert_eye_state.py --random-init -o eye_state.safetensors
+./convert_u2net.py --random-init -o u2net.safetensors
 
 # Copy to model cache
 mkdir -p ~/Library/Application\ Support/photo-qa/models  # macOS

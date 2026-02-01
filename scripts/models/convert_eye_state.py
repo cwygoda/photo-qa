@@ -1,4 +1,15 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run
+# /// script
+# requires-python = ">=3.11"
+# dependencies = [
+#     "numpy",
+#     "pillow",
+#     "safetensors",
+#     "scikit-learn",
+#     "torch",
+#     "tqdm",
+# ]
+# ///
 """
 Train and export eye state classifier to safetensors format.
 
