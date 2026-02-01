@@ -7,5 +7,5 @@ mod exposure;
 mod eyes;
 
 pub use blur::{BlurConfig, BlurModule};
-pub use exposure::{ExposureConfig, ExposureModule};
+pub use exposure::{ExposureAnalysis, ExposureConfig, ExposureModule, Histogram};
 pub use eyes::{EyesConfig, EyesModule};

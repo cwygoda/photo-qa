@@ -103,14 +103,14 @@
 ## Phase 5: QA Modules
 
 ### 5.1 Exposure Module (simplest, no ML)
-- [ ] Convert image to luminance channel
-- [ ] Compute 256-bin histogram
-- [ ] Calculate percentiles (5th, 95th)
-- [ ] Calculate mean, std deviation
-- [ ] Compute `under_score` (shadow clipping)
-- [ ] Compute `over_score` (highlight clipping)
-- [ ] Configurable thresholds
-- [ ] Unit tests with synthetic images
+- [x] Convert image to luminance channel
+- [x] Compute 256-bin histogram
+- [x] Calculate percentiles (5th, 95th)
+- [x] Calculate mean, std deviation
+- [x] Compute `under_score` (shadow clipping)
+- [x] Compute `over_score` (highlight clipping)
+- [x] Configurable thresholds
+- [x] Unit tests with synthetic images
 
 ### 5.2 Blur Module
 - [ ] **Sharpness Analysis**
