@@ -1,0 +1,11 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Generated model files
+*.safetensors
+*.pth
+
+# Test images
+test_image.png

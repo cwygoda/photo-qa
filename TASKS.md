@@ -257,21 +257,24 @@
 
 ## Phase 9: Model Preparation
 
-### 9.1 Model Conversion
-- [ ] Convert RetinaFace PyTorch → safetensors
-- [ ] Convert 68-point landmarks dlib → safetensors
-- [ ] Convert U²-Net PyTorch → safetensors
-- [ ] Convert IS-Net PyTorch → safetensors
+### 9.1 Model Conversion Scripts
+- [x] Create `scripts/models/requirements.txt` (PyTorch, safetensors deps)
+- [x] Create `scripts/models/convert_blazeface.py` (MediaPipe → safetensors)
+- [x] Create `scripts/models/convert_eye_state.py` (train + export to safetensors)
+- [x] Create `scripts/models/convert_u2net.py` (official weights → safetensors)
 
 ### 9.2 Model Validation
-- [ ] Verify inference output matches original
-- [ ] Benchmark inference speed
-- [ ] Document model sizes and checksums
+- [x] Create `scripts/models/verify_models.py` (unified verification script)
+- [ ] Benchmark inference speed (PyTorch vs Candle)
 
 ### 9.3 Model Distribution
-- [ ] Upload models to GitHub Releases
-- [ ] Create model manifest with checksums
-- [ ] Test auto-download flow
+- [x] Generate safetensors files for all models (random init for dev)
+- [x] Create `scripts/models/release.sh` (GitHub release workflow)
+- [x] Verify models load in Rust via `cargo run -- check`
+- [ ] Train/obtain production-ready model weights
+- [ ] Update `models.rs` with production checksums
+- [ ] Create GitHub Release `models-v1` with trained models
+- [ ] Test auto-download flow end-to-end
 
 ---
 
