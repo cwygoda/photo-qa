@@ -113,25 +113,25 @@
 - [x] Unit tests with synthetic images
 
 ### 5.2 Blur Module
-- [ ] **Sharpness Analysis**
-  - [ ] Laplacian variance calculation
-  - [ ] Sliding window implementation
-  - [ ] Per-region sharpness scoring
-- [ ] **Subject Detection (Heuristic)**
-  - [ ] Edge-density heuristic (primary)
-  - [ ] Define "subject region" extraction
-- [ ] **Subject Detection (ML Fallback)**
+- [x] **Sharpness Analysis**
+  - [x] Laplacian variance calculation
+  - [x] Sliding window implementation
+  - [x] Per-region sharpness scoring
+- [x] **Subject Detection (Heuristic)**
+  - [x] Edge-density heuristic (primary)
+  - [x] Define "subject region" extraction
+- [ ] **Subject Detection (ML Fallback)** (deferred to Phase 9)
   - [ ] U²-Net model integration
   - [ ] IS-Net model integration
   - [ ] Benchmark both, select winner
   - [ ] Saliency map → bounding box conversion
-- [ ] **Blur Type Classification**
-  - [ ] FFT directional analysis
-  - [ ] Motion blur detection (directional energy)
-  - [ ] Defocus blur detection (uniform variance drop)
-  - [ ] Classification: `motion | defocus | mixed | sharp`
-- [ ] Output: `blur_score`, `blur_type`, `subject_bbox`
-- [ ] Unit tests with blur dataset samples
+- [x] **Blur Type Classification**
+  - [x] FFT directional analysis
+  - [x] Motion blur detection (directional energy)
+  - [x] Defocus blur detection (uniform variance drop)
+  - [x] Classification: `motion | defocus | mixed | sharp`
+- [x] Output: `blur_score`, `blur_type`, `subject_bbox`
+- [x] Unit tests with synthetic images
 
 ### 5.3 Closed Eyes Module
 - [ ] **Face Detection**
