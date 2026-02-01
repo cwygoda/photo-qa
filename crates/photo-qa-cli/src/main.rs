@@ -4,9 +4,11 @@ use clap::Parser;
 use tracing_subscriber::{fmt, prelude::*, EnvFilter};
 
 mod commands;
+mod config;
 mod output;
 
 use commands::{Cli, Commands, ExitCode};
+use config::AppConfig;
 
 fn main() -> std::process::ExitCode {
     let cli = Cli::parse();
@@ -24,14 +26,20 @@ fn main() -> std::process::ExitCode {
         .with(filter)
         .init();
 
+    // Load configuration from files (XDG + project-local)
+    let config = AppConfig::load();
+
     let exit_code = match cli.command {
-        Some(Commands::Check(ref args)) => match commands::check::run(args) {
-            Ok(result) => result.exit_code,
-            Err(e) => {
-                eprintln!("error: {e:#}");
-                ExitCode::Error
+        Some(Commands::Check(args)) => {
+            let merged = commands::check::CheckArgs::with_config(*args, &config);
+            match commands::check::run(&merged) {
+                Ok(result) => result.exit_code,
+                Err(e) => {
+                    eprintln!("error: {e:#}");
+                    ExitCode::Error
+                }
             }
-        },
+        }
         Some(Commands::Models(ref args)) => match commands::models::run(args) {
             Ok(()) => ExitCode::Success,
             Err(e) => {
@@ -45,7 +53,8 @@ fn main() -> std::process::ExitCode {
                 eprintln!("error: No paths specified. Use --help for usage information.");
                 return ExitCode::Error.into();
             }
-            match commands::check::run(&cli.check) {
+            let merged = commands::check::CheckArgs::with_config(cli.check, &config);
+            match commands::check::run(&merged) {
                 Ok(result) => result.exit_code,
                 Err(e) => {
                     eprintln!("error: {e:#}");

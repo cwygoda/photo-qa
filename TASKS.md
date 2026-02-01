@@ -205,23 +205,23 @@
 ## Phase 7: Configuration
 
 ### 7.1 Config File Support
-- [ ] TOML parsing via `toml` crate
-- [ ] XDG config path (`~/.config/photo-qa/config.toml`)
-- [ ] Project-local `.photo-qa.toml`
-- [ ] Parent directory traversal for config
+- [x] TOML parsing via `toml` crate
+- [x] XDG config path (`~/.config/photo-qa/config.toml`)
+- [x] Project-local `.photo-qa.toml`
+- [x] Parent directory traversal for config
 
 ### 7.2 Config Layering
-- [ ] Load XDG config (lowest priority)
-- [ ] Override with project config
-- [ ] Override with CLI flags (highest priority)
+- [x] Load XDG config (lowest priority)
+- [x] Override with project config
+- [x] Override with CLI flags (highest priority)
 
 ### 7.3 Config Schema
-- [ ] `[general]` section
-- [ ] `[blur]` section
-- [ ] `[exposure]` section
-- [ ] `[eyes]` section
-- [ ] `[models]` section
-- [ ] `[output]` section
+- [x] `[general]` section
+- [x] `[blur]` section
+- [x] `[exposure]` section
+- [x] `[eyes]` section
+- [x] `[models]` section
+- [x] `[output]` section
 
 ---
 

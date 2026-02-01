@@ -43,7 +43,7 @@ pub struct Cli {
 #[derive(Subcommand)]
 pub enum Commands {
     /// Analyze images for quality issues
-    Check(check::CheckArgs),
+    Check(Box<check::CheckArgs>),
     /// Manage ML models
     Models(models::ModelsArgs),
 }
