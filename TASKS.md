@@ -153,52 +153,52 @@
 ## Phase 6: CLI (`photo-qa-cli`)
 
 ### 6.1 Command Structure
-- [ ] Root command (default: run all checks)
-- [ ] `check` subcommand (explicit)
-- [ ] `models` subcommand group
-  - [ ] `models fetch`
-  - [ ] `models list`
-  - [ ] `models path`
+- [x] Root command (default: run all checks)
+- [x] `check` subcommand (explicit)
+- [x] `models` subcommand group
+  - [x] `models fetch`
+  - [x] `models list`
+  - [x] `models path`
 
 ### 6.2 Input Options
-- [ ] `<PATHS>...` positional arguments
-- [ ] `--recursive, -r` flag
-- [ ] Path validation and expansion
+- [x] `<PATHS>...` positional arguments
+- [x] `--recursive, -r` flag
+- [x] Path validation and expansion
 
 ### 6.3 Check Toggles
-- [ ] `--blur` / `--no-blur`
-- [ ] `--exposure` / `--no-exposure`
-- [ ] `--eyes` / `--no-eyes`
-- [ ] Default: all enabled
+- [x] `--blur` / `--no-blur`
+- [x] `--exposure` / `--no-exposure`
+- [x] `--eyes` / `--no-eyes`
+- [x] Default: all enabled
 
 ### 6.4 Threshold Options
-- [ ] `--blur-threshold <0.0-1.0>`
-- [ ] `--under-threshold <0.0-1.0>`
-- [ ] `--over-threshold <0.0-1.0>`
-- [ ] `--ear-threshold <0.0-1.0>`
-- [ ] Validation and default values
+- [x] `--blur-threshold <0.0-1.0>`
+- [x] `--under-threshold <0.0-1.0>`
+- [x] `--over-threshold <0.0-1.0>`
+- [x] `--ear-threshold <0.0-1.0>`
+- [x] Validation and default values
 
 ### 6.5 Output Options
-- [ ] `--format <json|jsonl>` (default: jsonl)
-- [ ] `--exif` flag for EXIF metadata
-- [ ] `--progress` / `--quiet` flags
-- [ ] TTY auto-detection for progress
+- [x] `--format <json|jsonl>` (default: jsonl)
+- [x] `--exif` flag for EXIF metadata
+- [x] `--progress` / `--quiet` flags
+- [x] TTY auto-detection for progress
 
 ### 6.6 Output Formatting
-- [ ] JSON serialization of `AnalysisResult`
-- [ ] JSONL streaming output
-- [ ] Pretty JSON option
-- [ ] Progress bar via `indicatif`
+- [x] JSON serialization of `AnalysisResult`
+- [x] JSONL streaming output
+- [x] Pretty JSON option (`--pretty` flag)
+- [x] Progress bar via `indicatif`
 
 ### 6.7 Exit Codes
-- [ ] `0`: success, no issues
-- [ ] `1`: success, issues found
-- [ ] `2`: runtime error
+- [x] `0`: success, no issues
+- [x] `1`: success, issues found
+- [x] `2`: runtime error
 
 ### 6.8 Logging
-- [ ] `tracing` + `tracing-subscriber` setup
-- [ ] `-v` / `-vv` / `-vvv` verbosity levels
-- [ ] `RUST_LOG` environment override
+- [x] `tracing` + `tracing-subscriber` setup
+- [x] `-v` / `-vv` / `-vvv` verbosity levels
+- [x] `RUST_LOG` environment override
 
 ---
 

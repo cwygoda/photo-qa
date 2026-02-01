@@ -1,15 +1,14 @@
 //! Photo QA CLI - Automated photo quality assessment tool.
 
-use anyhow::Result;
 use clap::Parser;
 use tracing_subscriber::{fmt, prelude::*, EnvFilter};
 
 mod commands;
 mod output;
 
-use commands::{Cli, Commands};
+use commands::{Cli, Commands, ExitCode};
 
-fn main() -> Result<()> {
+fn main() -> std::process::ExitCode {
     let cli = Cli::parse();
 
     // Initialize tracing
@@ -25,15 +24,36 @@ fn main() -> Result<()> {
         .with(filter)
         .init();
 
-    match cli.command {
-        Some(Commands::Check(ref args)) => commands::check::run(args),
-        Some(Commands::Models(ref args)) => commands::models::run(args),
+    let exit_code = match cli.command {
+        Some(Commands::Check(ref args)) => match commands::check::run(args) {
+            Ok(result) => result.exit_code,
+            Err(e) => {
+                eprintln!("error: {e:#}");
+                ExitCode::Error
+            }
+        },
+        Some(Commands::Models(ref args)) => match commands::models::run(args) {
+            Ok(()) => ExitCode::Success,
+            Err(e) => {
+                eprintln!("error: {e:#}");
+                ExitCode::Error
+            }
+        },
         None => {
             // Default behavior: run check with flattened args
             if cli.check.paths.is_empty() {
-                anyhow::bail!("No paths specified. Use --help for usage information.");
+                eprintln!("error: No paths specified. Use --help for usage information.");
+                return ExitCode::Error.into();
             }
-            commands::check::run(&cli.check)
+            match commands::check::run(&cli.check) {
+                Ok(result) => result.exit_code,
+                Err(e) => {
+                    eprintln!("error: {e:#}");
+                    ExitCode::Error
+                }
+            }
         }
-    }
+    };
+
+    exit_code.into()
 }

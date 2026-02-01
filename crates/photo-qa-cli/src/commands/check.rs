@@ -1,9 +1,30 @@
 //! Check command - analyze images for quality issues.
 
-use anyhow::Result;
-use clap::Args;
+use std::collections::HashMap;
+use std::io::IsTerminal;
 use std::path::PathBuf;
-use tracing::{info, warn};
+
+use anyhow::Result;
+use clap::{Args, ValueEnum};
+use photo_qa_adapters::{model_path, FsImageSource};
+use photo_qa_core::{
+    AnalysisResult, BlurConfig, BlurModule, ExposureConfig, ExposureModule, EyesConfig, EyesModule,
+    ImageDimensions, ImageSource, ProgressEvent, QaModule, ResultOutput,
+};
+use tracing::{debug, info, warn};
+
+use super::ExitCode;
+use crate::output::{JsonOutput, ProgressBar};
+
+/// Output format for results.
+#[derive(Debug, Clone, Copy, Default, ValueEnum)]
+pub enum OutputFormat {
+    /// JSON Lines (one JSON object per line)
+    #[default]
+    Jsonl,
+    /// Single JSON array
+    Json,
+}
 
 /// Shared arguments for image analysis.
 #[derive(Args, Clone)]
@@ -55,26 +76,270 @@ pub struct CheckArgs {
     /// Suppress progress output
     #[arg(short, long)]
     pub quiet: bool,
+
+    /// Output format
+    #[arg(long, value_enum, default_value = "jsonl")]
+    pub format: OutputFormat,
+
+    /// Pretty-print JSON output (only affects --format json)
+    #[arg(long)]
+    pub pretty: bool,
+}
+
+/// Result of running the check command.
+#[allow(dead_code)] // Fields exposed for programmatic use
+pub struct CheckResult {
+    /// Number of images processed.
+    pub processed: usize,
+    /// Number of images skipped.
+    pub skipped: usize,
+    /// Number of images with issues.
+    pub with_issues: usize,
+    /// Exit code.
+    pub exit_code: ExitCode,
 }
 
 /// Run the check command.
-pub fn run(args: &CheckArgs) -> Result<()> {
+pub fn run(args: &CheckArgs) -> Result<CheckResult> {
     info!("Running check command on {} paths", args.paths.len());
 
     if args.paths.is_empty() {
         anyhow::bail!("No paths specified");
     }
 
-    // TODO: Implement check command
-    // 1. Initialize adapters (filesystem, stdout)
-    // 2. Create QA modules based on flags
-    // 3. Process images
-    // 4. Output results as JSON lines
+    // Initialize image source
+    let source = FsImageSource::new(args.paths.clone(), args.recursive);
+    let total = source.count_hint();
 
-    for path in &args.paths {
-        info!("Would analyze: {}", path.display());
+    // Determine if we should show progress
+    let show_progress = !args.quiet && (args.progress || std::io::stderr().is_terminal());
+
+    // Initialize progress bar
+    let progress_bar = ProgressBar::new(total.map(|t| t as u64), args.quiet, show_progress);
+
+    // Initialize output adapter
+    let output = JsonOutput::stdout();
+
+    // Build QA modules based on flags
+    let modules = build_modules(args);
+
+    if modules.is_empty() {
+        warn!("All QA modules disabled, nothing to check");
+        return Ok(CheckResult {
+            processed: 0,
+            skipped: 0,
+            with_issues: 0,
+            exit_code: ExitCode::Success,
+        });
     }
 
-    warn!("Check command not yet implemented");
-    Ok(())
+    // Process images
+    process_images(&source, &modules, &output, &progress_bar, args)
+}
+
+/// Build QA modules based on command-line arguments.
+fn build_modules(args: &CheckArgs) -> Vec<Box<dyn QaModule>> {
+    let mut modules: Vec<Box<dyn QaModule>> = Vec::new();
+
+    // Exposure module (no ML, always available)
+    if !args.no_exposure {
+        let config = ExposureConfig {
+            under_threshold: args.under_threshold,
+            over_threshold: args.over_threshold,
+            ..Default::default()
+        };
+        modules.push(Box::new(ExposureModule::new(config)));
+        debug!("Enabled exposure module");
+    }
+
+    // Blur module (no ML)
+    if !args.no_blur {
+        let config = BlurConfig {
+            threshold: args.blur_threshold,
+            ..Default::default()
+        };
+        modules.push(Box::new(BlurModule::new(config)));
+        debug!("Enabled blur module");
+    }
+
+    // Eyes module (requires ML models)
+    if !args.no_eyes {
+        let blazeface_path = model_path("blazeface");
+        let eye_state_path = model_path("eye_state");
+
+        match (blazeface_path, eye_state_path) {
+            (Some(bf), Some(es)) => {
+                if !bf.exists() {
+                    info!(
+                        "Eyes module disabled: {} not found. Run `photo-qa models fetch`.",
+                        bf.display()
+                    );
+                } else if !es.exists() {
+                    info!(
+                        "Eyes module disabled: {} not found. Run `photo-qa models fetch`.",
+                        es.display()
+                    );
+                } else {
+                    let config = EyesConfig {
+                        ear_threshold: args.ear_threshold,
+                        blazeface_model_path: Some(bf),
+                        eye_state_model_path: Some(es),
+                        ..Default::default()
+                    };
+                    modules.push(Box::new(EyesModule::new(config)));
+                    debug!("Enabled eyes module");
+                }
+            }
+            (None, _) | (_, None) => {
+                info!("Eyes module disabled: unknown model configuration.");
+            }
+        }
+    }
+
+    modules
+}
+
+/// Process images through QA modules.
+fn process_images(
+    source: &FsImageSource,
+    modules: &[Box<dyn QaModule>],
+    output: &JsonOutput,
+    progress: &ProgressBar,
+    args: &CheckArgs,
+) -> Result<CheckResult> {
+    use photo_qa_core::ProgressSink;
+
+    let total = source.count_hint();
+    let mut processed = 0usize;
+    let mut skipped = 0usize;
+    let mut with_issues = 0usize;
+    let mut all_results: Vec<AnalysisResult> = Vec::new();
+
+    for (index, image_result) in source.images().enumerate() {
+        let image = match image_result {
+            Ok(img) => img,
+            Err(e) => {
+                // Note: error message contains the path via anyhow context
+                progress.on_event(ProgressEvent::Skipped {
+                    path: format!("image {index}"),
+                    reason: e.to_string(),
+                });
+                skipped += 1;
+                continue;
+            }
+        };
+
+        let path = image.path.clone();
+
+        progress.on_event(ProgressEvent::Started {
+            path: path.clone(),
+            index,
+            total,
+        });
+
+        // Run all modules
+        let mut issues = Vec::new();
+        for module in modules {
+            match module.analyze(&image) {
+                Ok(mut module_issues) => {
+                    issues.append(&mut module_issues);
+                }
+                Err(e) => {
+                    warn!("Module {} failed for {}: {}", module.name(), path, e);
+                }
+            }
+        }
+
+        // Extract EXIF if requested
+        let exif = if args.exif { extract_exif(&path) } else { None };
+
+        // Track issues before moving
+        let has_issues = !issues.is_empty();
+
+        // Build result
+        let result = AnalysisResult {
+            path,
+            timestamp: iso_timestamp(),
+            dimensions: ImageDimensions::new(image.width, image.height),
+            issues,
+            exif,
+        };
+
+        if has_issues {
+            with_issues += 1;
+        }
+
+        progress.on_event(ProgressEvent::Completed {
+            result: result.clone(),
+        });
+
+        // Output based on format
+        match args.format {
+            OutputFormat::Jsonl => {
+                output.write(&result)?;
+            }
+            OutputFormat::Json => {
+                all_results.push(result);
+            }
+        }
+
+        processed += 1;
+    }
+
+    // For JSON format, output all results as array via adapter
+    if matches!(args.format, OutputFormat::Json) {
+        output.write_array(&all_results, args.pretty)?;
+    }
+
+    output.flush()?;
+
+    progress.on_event(ProgressEvent::Finished { processed, skipped });
+
+    // Determine exit code
+    let exit_code = if with_issues > 0 {
+        ExitCode::IssuesFound
+    } else {
+        ExitCode::Success
+    };
+
+    Ok(CheckResult {
+        processed,
+        skipped,
+        with_issues,
+        exit_code,
+    })
+}
+
+/// Extract EXIF metadata from an image file.
+fn extract_exif(path: &str) -> Option<HashMap<String, String>> {
+    use std::fs::File;
+    use std::io::BufReader;
+
+    let file = File::open(path).ok()?;
+    let mut reader = BufReader::new(file);
+    let exif = exif::Reader::new().read_from_container(&mut reader).ok()?;
+
+    let mut map = HashMap::new();
+    for field in exif.fields() {
+        let tag_name = field.tag.to_string();
+        let value = field.display_value().with_unit(&exif).to_string();
+        map.insert(tag_name, value);
+    }
+
+    if map.is_empty() {
+        None
+    } else {
+        Some(map)
+    }
+}
+
+/// Generate ISO 8601 UTC timestamp (RFC 3339 format).
+fn iso_timestamp() -> String {
+    match time::OffsetDateTime::now_utc().format(&time::format_description::well_known::Rfc3339) {
+        Ok(ts) => ts,
+        Err(e) => {
+            debug!("Timestamp format failed: {e}");
+            String::from("1970-01-01T00:00:00Z")
+        }
+    }
 }

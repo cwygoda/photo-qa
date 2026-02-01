@@ -6,14 +6,12 @@ use std::io::{self, Write};
 use std::sync::Mutex;
 
 /// JSON Lines output adapter.
-#[allow(dead_code)]
 pub struct JsonOutput {
     writer: Mutex<Box<dyn Write + Send>>,
 }
 
 impl JsonOutput {
     /// Creates a new JSON output writing to stdout.
-    #[allow(dead_code)]
     #[must_use]
     pub fn stdout() -> Self {
         Self {
@@ -22,12 +20,28 @@ impl JsonOutput {
     }
 
     /// Creates a new JSON output writing to the given writer.
-    #[allow(dead_code)]
+    #[allow(dead_code)] // API for programmatic use
     #[must_use]
     pub fn new(writer: Box<dyn Write + Send>) -> Self {
         Self {
             writer: Mutex::new(writer),
         }
+    }
+
+    /// Writes a batch of results as a JSON array.
+    #[allow(clippy::significant_drop_tightening)]
+    pub fn write_array(&self, results: &[AnalysisResult], pretty: bool) -> Result<()> {
+        let json = if pretty {
+            serde_json::to_string_pretty(results)?
+        } else {
+            serde_json::to_string(results)?
+        };
+        let mut writer = self
+            .writer
+            .lock()
+            .map_err(|e| anyhow::anyhow!("Lock poisoned: {e}"))?;
+        writeln!(writer, "{json}")?;
+        Ok(())
     }
 }
 

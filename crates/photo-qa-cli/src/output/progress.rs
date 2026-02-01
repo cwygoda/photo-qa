@@ -53,12 +53,12 @@ impl ProgressSink for ProgressBar {
         }
 
         match event {
-            ProgressEvent::Started { path, index, total } => {
+            ProgressEvent::Started { path, total, .. } => {
                 if let Some(bar) = &self.bar {
                     if let Some(t) = total {
                         bar.set_length(t as u64);
                     }
-                    bar.set_position(index as u64);
+                    // Don't set_position here - let Completed/Skipped inc(1) handle it
                     bar.set_message(path);
                 }
             }

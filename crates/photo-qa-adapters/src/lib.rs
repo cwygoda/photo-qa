@@ -9,3 +9,4 @@ pub mod fs;
 pub mod models;
 
 pub use fs::FsImageSource;
+pub use models::{model_path, models_dir};
