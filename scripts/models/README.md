@@ -10,13 +10,16 @@ so dependencies are installed automatically by `uv run`.
 Generate models with random initialization for testing:
 
 ```bash
-./convert_blazeface.py -o blazeface.safetensors
-./convert_eye_state.py --random-init -o eye_state.safetensors
-./convert_u2net.py --random-init -o u2net.safetensors
+./convert_blazeface.py
+./convert_eye_state.py --random-init
+./convert_u2net.py --random-init
 
-# Copy to model cache
-mkdir -p ~/Library/Application\ Support/photo-qa/models  # macOS
-cp *.safetensors ~/Library/Application\ Support/photo-qa/models/
+# Models are saved to ./weights/ by default
+# Run CLI with custom models directory:
+cargo run -- check --models-dir ./scripts/models/weights image.jpg
+
+# Or set environment variable:
+PHOTO_QA_MODELS_DIR=./scripts/models/weights cargo run -- check image.jpg
 ```
 
 ## Models

@@ -22,6 +22,8 @@ pub struct AppConfig {
     pub exposure: ExposureConfig,
     /// Closed-eyes detection settings.
     pub eyes: EyesConfig,
+    /// Model settings.
+    pub models: ModelsConfig,
     /// Output formatting settings.
     pub output: OutputConfig,
 }
@@ -78,6 +80,14 @@ pub struct EyesConfig {
     pub ear_threshold: Option<f32>,
     /// Minimum face detection confidence.
     pub min_face_confidence: Option<f32>,
+}
+
+/// Model configuration.
+#[derive(Debug, Default, Clone, Deserialize)]
+#[serde(default)]
+pub struct ModelsConfig {
+    /// Custom models directory path.
+    pub dir: Option<std::path::PathBuf>,
 }
 
 /// Output formatting configuration.
@@ -220,6 +230,9 @@ impl AppConfig {
             .eyes
             .min_face_confidence
             .or(self.eyes.min_face_confidence);
+
+        // Models
+        self.models.dir = other.models.dir.or_else(|| self.models.dir.take());
 
         // Output
         self.output.format = other.output.format.or_else(|| self.output.format.take());

@@ -3,6 +3,7 @@
 # requires-python = ">=3.11"
 # dependencies = [
 #     "numpy",
+#     "packaging",
 #     "pillow",
 #     "safetensors",
 #     "scikit-learn",
@@ -284,7 +285,7 @@ def main():
     parser.add_argument(
         "--output", "-o",
         type=Path,
-        default=Path("eye_state.safetensors"),
+        default=Path("weights/eye_state.safetensors"),
         help="Output safetensors file path"
     )
     parser.add_argument(
@@ -355,6 +356,7 @@ def main():
     # Convert and save
     weights = convert_to_safetensors(model)
 
+    args.output.parent.mkdir(parents=True, exist_ok=True)
     print(f"\nSaving to {args.output}...")
     save_file(weights, args.output)
 

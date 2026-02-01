@@ -2,6 +2,7 @@
 # /// script
 # requires-python = ">=3.11"
 # dependencies = [
+#     "packaging",
 #     "requests",
 #     "safetensors",
 #     "torch",
@@ -400,7 +401,7 @@ def main():
     parser.add_argument(
         "--output", "-o",
         type=Path,
-        default=Path("u2net.safetensors"),
+        default=Path("weights/u2net.safetensors"),
         help="Output safetensors file path"
     )
     parser.add_argument(
@@ -438,6 +439,7 @@ def main():
     # Convert to safetensors format
     weights = {k: v.float() for k, v in model.state_dict().items()}
 
+    args.output.parent.mkdir(parents=True, exist_ok=True)
     print(f"Saving to {args.output}...")
     save_file(weights, args.output)
 

@@ -54,11 +54,39 @@ pub const MODELS: &[ModelInfo] = &[
     },
 ];
 
+// Thread-local override for models directory.
+std::thread_local! {
+    static MODELS_DIR_OVERRIDE: std::cell::RefCell<Option<PathBuf>> = const { std::cell::RefCell::new(None) };
+}
+
+/// Set a custom models directory override.
+///
+/// This affects all subsequent calls to `models_dir()` and `model_path()` in the current thread.
+pub fn set_models_dir(path: Option<PathBuf>) {
+    MODELS_DIR_OVERRIDE.with(|cell| {
+        *cell.borrow_mut() = path;
+    });
+}
+
 /// Returns the models directory path.
 ///
-/// Uses `XDG_DATA_HOME/photo-qa/models` or `~/.local/share/photo-qa/models`.
+/// Priority:
+/// 1. Override set via `set_models_dir()` or `PHOTO_QA_MODELS_DIR` env var
+/// 2. `XDG_DATA_HOME/photo-qa/models` or `~/.local/share/photo-qa/models`
 #[must_use]
 pub fn models_dir() -> PathBuf {
+    // Check thread-local override first
+    let override_path = MODELS_DIR_OVERRIDE.with(|cell| cell.borrow().clone());
+    if let Some(path) = override_path {
+        return path;
+    }
+
+    // Check environment variable
+    if let Ok(env_path) = std::env::var("PHOTO_QA_MODELS_DIR") {
+        return PathBuf::from(env_path);
+    }
+
+    // Default to XDG data dir
     dirs::data_dir()
         .unwrap_or_else(|| PathBuf::from("."))
         .join("photo-qa")

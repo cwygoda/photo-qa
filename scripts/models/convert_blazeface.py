@@ -3,6 +3,7 @@
 # requires-python = ">=3.11"
 # dependencies = [
 #     "numpy",
+#     "packaging",
 #     "safetensors",
 #     "torch",
 # ]
@@ -150,7 +151,7 @@ def main():
     parser.add_argument(
         "--output", "-o",
         type=Path,
-        default=Path("blazeface.safetensors"),
+        default=Path("weights/blazeface.safetensors"),
         help="Output safetensors file path"
     )
     parser.add_argument(
@@ -182,6 +183,7 @@ def main():
         if "num_batches_tracked" not in name:
             weights[name] = buffer.float()
 
+    args.output.parent.mkdir(parents=True, exist_ok=True)
     print(f"Saving to {args.output}...")
     save_file(weights, args.output)
 

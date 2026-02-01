@@ -6,7 +6,7 @@ use std::path::PathBuf;
 
 use anyhow::Result;
 use clap::{Args, ValueEnum};
-use photo_qa_adapters::{model_path, FsImageSource};
+use photo_qa_adapters::{model_path, set_models_dir, FsImageSource};
 use photo_qa_core::{
     AnalysisResult, BlurConfig, BlurModule, ExposureConfig, ExposureModule, EyesConfig, EyesModule,
     ImageDimensions, ImageSource, ProgressEvent, QaModule, ResultOutput,
@@ -106,6 +106,10 @@ pub struct CheckArgs {
     #[arg(long)]
     pub pretty: bool,
 
+    /// Custom models directory (overrides default and config)
+    #[arg(long, value_name = "DIR")]
+    pub models_dir: Option<PathBuf>,
+
     /// Merged config (populated by `with_config`, not from CLI).
     #[arg(skip)]
     config: Option<AppConfig>,
@@ -176,6 +180,11 @@ impl CheckArgs {
             args.progress = config.output.progress.unwrap_or(false);
         }
 
+        // Models directory: CLI > config
+        if args.models_dir.is_none() {
+            args.models_dir.clone_from(&config.models.dir);
+        }
+
         // Store config for build_modules to access advanced settings
         args.config = Some(config.clone());
 
@@ -230,6 +239,12 @@ pub fn run(args: &CheckArgs) -> Result<CheckResult> {
 
     if args.paths.is_empty() {
         anyhow::bail!("No paths specified");
+    }
+
+    // Apply models directory override if specified
+    if let Some(ref models_dir) = args.models_dir {
+        debug!("Using custom models directory: {}", models_dir.display());
+        set_models_dir(Some(models_dir.clone()));
     }
 
     // Initialize image source

@@ -4,6 +4,7 @@ __pycache__/
 *.pyc
 
 # Generated model files
+weights/
 *.safetensors
 *.pth
 
