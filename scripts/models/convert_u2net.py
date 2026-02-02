@@ -409,17 +409,9 @@ def main():
         type=Path,
         help="Path to existing PyTorch weights (optional, will download if not provided)"
     )
-    parser.add_argument(
-        "--random-init",
-        action="store_true",
-        help="Initialize with random weights instead of pretrained"
-    )
     args = parser.parse_args()
 
-    if args.random_init:
-        print("Initializing U²-Net with random weights...")
-        model = U2NET()
-    elif args.weights:
+    if args.weights:
         weights_path = args.weights
         if not weights_path.exists():
             print(f"Error: Weights file not found: {weights_path}")
@@ -431,10 +423,8 @@ def main():
         model = U2NET()
         model.load_state_dict(state_dict)
     else:
-        print("Error: No weights specified.")
-        print(PRETRAINED_WEIGHTS_INFO)
-        print("\nUse --random-init to generate a model with random weights for testing.")
-        return
+        print("Generating U²-Net (random initialization)...")
+        model = U2NET()
 
     # Convert to safetensors format
     weights = {k: v.float() for k, v in model.state_dict().items()}

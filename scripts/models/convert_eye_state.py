@@ -301,9 +301,9 @@ def main():
         help="Training batch size"
     )
     parser.add_argument(
-        "--random-init",
+        "--train",
         action="store_true",
-        help="Save random initialization (no training)"
+        help="Train on CEW dataset (requires --data-dir)"
     )
     parser.add_argument(
         "--device",
@@ -314,9 +314,7 @@ def main():
 
     model = EyeStateClassifier()
 
-    if args.random_init:
-        print("Saving randomly initialized eye state classifier...")
-    else:
+    if args.train:
         if not args.data_dir:
             print("Error: --data-dir required for training")
             print("Download CEW dataset from: http://parnec.nuaa.edu.cn/xtan/data/ClosedEyeDatabases.html")
@@ -352,6 +350,8 @@ def main():
 
         print(f"\nTraining on {len(train_samples)} samples, validating on {len(val_samples)}")
         model = train_model(model, train_loader, val_loader, epochs=args.epochs, device=args.device)
+    else:
+        print("Generating eye state classifier (random initialization)...")
 
     # Convert and save
     weights = convert_to_safetensors(model)

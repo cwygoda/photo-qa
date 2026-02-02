@@ -7,15 +7,23 @@ so dependencies are installed automatically by `uv run`.
 
 ## Quick Start (Development)
 
-Generate models with random initialization for testing:
+Generate models with random initialization:
 
 ```bash
-./convert_blazeface.py
-./convert_eye_state.py --random-init
-./convert_u2net.py --random-init
+# From repo root:
+just generate-models-quick  # blazeface + eye_state (fast)
+just generate-models        # all models including u2net (~176MB)
 
-# Models are saved to ./weights/ by default
-# Run CLI with custom models directory:
+# Or run scripts directly:
+cd scripts/models
+./convert_blazeface.py
+./convert_eye_state.py
+./convert_u2net.py
+
+# Verify models
+just verify-models
+
+# Run CLI with local models:
 cargo run -- check --models-dir ./scripts/models/weights image.jpg
 
 # Or set environment variable:

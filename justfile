@@ -82,7 +82,21 @@ ci: fmt-check lint test build
 
 # === Models ===
 
-# Fetch ML models
+# Generate all model weights (random initialization)
+generate-models:
+    cd scripts/models && ./convert_blazeface.py && ./convert_eye_state.py && ./convert_u2net.py
+
+# Generate model weights (without U2Net - faster)
+generate-models-quick:
+    cd scripts/models && ./convert_blazeface.py && ./convert_eye_state.py
+
+# Verify generated models
+verify-models:
+    cd scripts/models && ./verify_models.py \
+        --blazeface weights/blazeface.safetensors \
+        --eye-state weights/eye_state.safetensors
+
+# Fetch ML models from GitHub releases
 fetch-models:
     cargo run -- models fetch
 
