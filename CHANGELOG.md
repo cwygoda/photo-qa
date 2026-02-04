@@ -1,3 +1,10 @@
+## [0.1.1](https://github.com/cwygoda/photo-qa/compare/v0.1.0...v0.1.1) (2026-02-04)
+
+
+### Bug Fixes
+
+* **cli:** improve error message visibility and actionability ([102b54b](https://github.com/cwygoda/photo-qa/commit/102b54b2c7958b1031e7d94aee506d01c7c004e3))
+
 # [0.1.0](https://github.com/cwygoda/photo-qa/compare/v0.0.0...v0.1.0) (2026-02-04)
 
 
