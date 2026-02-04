@@ -137,7 +137,7 @@ impl AppConfig {
 
         // Validate merged config
         if let Err(e) = config.validate() {
-            tracing::warn!("Config validation: {e}");
+            eprintln!("warning: {e}");
         }
 
         config

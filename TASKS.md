@@ -284,10 +284,10 @@
 ## Phase 10: Polish & Release
 
 ### 10.1 Error Handling Review
-- [ ] Audit all error paths
-- [ ] Ensure skip+warn behavior
-- [ ] Graceful model download failures
-- [ ] Helpful error messages
+- [x] Audit all error paths
+- [x] Ensure skip+warn behavior
+- [x] Graceful model download failures
+- [x] Helpful error messages
 
 ### 10.2 Performance
 - [ ] Profile with large image sets

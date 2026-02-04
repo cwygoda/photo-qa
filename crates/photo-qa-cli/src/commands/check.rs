@@ -238,7 +238,7 @@ pub fn run(args: &CheckArgs) -> Result<CheckResult> {
     info!("Running check command on {} paths", args.paths.len());
 
     if args.paths.is_empty() {
-        anyhow::bail!("No paths specified");
+        anyhow::bail!("No paths specified. Run with --help for usage.");
     }
 
     // Apply models directory override if specified
@@ -470,9 +470,21 @@ fn extract_exif(path: &str) -> Option<HashMap<String, String>> {
     use std::fs::File;
     use std::io::BufReader;
 
-    let file = File::open(path).ok()?;
+    let file = match File::open(path) {
+        Ok(f) => f,
+        Err(e) => {
+            debug!("Failed to open {path} for EXIF: {e}");
+            return None;
+        }
+    };
     let mut reader = BufReader::new(file);
-    let exif = exif::Reader::new().read_from_container(&mut reader).ok()?;
+    let exif = match exif::Reader::new().read_from_container(&mut reader) {
+        Ok(e) => e,
+        Err(e) => {
+            debug!("Failed to read EXIF from {path}: {e}");
+            return None;
+        }
+    };
 
     let mut map = HashMap::new();
     for field in exif.fields() {
