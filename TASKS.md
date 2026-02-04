@@ -271,10 +271,13 @@
 - [x] Generate safetensors files for all models (random init for dev)
 - [x] Create `scripts/models/release.sh` (GitHub release workflow)
 - [x] Verify models load in Rust via `cargo run -- check`
-- [ ] Train/obtain production-ready model weights
-- [ ] Update `models.rs` with production checksums
-- [ ] Create GitHub Release `models-v1` with trained models
-- [ ] Test auto-download flow end-to-end
+- [x] Train/obtain production-ready model weights
+  - [x] U²-Net: Official pretrained from Google Drive
+  - [x] Eye State: Trained on CEW dataset (96% val accuracy)
+  - [ ] BlazeFace: Deferred - requires WIDER FACE training (~100-200 V100 GPU hours)
+- [x] Update `models.rs` with production checksums
+- [x] Create GitHub Release `models-v1` with trained models
+- [x] Test auto-download flow end-to-end
 
 ---
 

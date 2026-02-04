@@ -2,6 +2,7 @@
 # /// script
 # requires-python = ">=3.11"
 # dependencies = [
+#     "numpy",
 #     "packaging",
 #     "requests",
 #     "safetensors",

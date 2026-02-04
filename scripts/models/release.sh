@@ -12,6 +12,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
+WEIGHTS_DIR="weights"
 MODELS=(
     "blazeface.safetensors"
     "eye_state.safetensors"
@@ -23,20 +24,23 @@ TITLE="ML Models v1"
 
 # Check all models exist
 echo "Checking model files..."
+MODEL_PATHS=()
 for model in "${MODELS[@]}"; do
-    if [[ ! -f "$model" ]]; then
-        echo "Error: Missing $model"
+    model_path="$WEIGHTS_DIR/$model"
+    if [[ ! -f "$model_path" ]]; then
+        echo "Error: Missing $model_path"
         echo "Run the conversion scripts first (see README.md)"
         exit 1
     fi
-    echo "  ✓ $model ($(du -h "$model" | cut -f1))"
+    echo "  ✓ $model ($(du -h "$model_path" | cut -f1))"
+    MODEL_PATHS+=("$model_path")
 done
 
 # Print checksums
 echo ""
 echo "SHA256 checksums:"
-for model in "${MODELS[@]}"; do
-    sha256sum "$model"
+for model_path in "${MODEL_PATHS[@]}"; do
+    shasum -a 256 "$model_path"
 done
 
 echo ""
@@ -60,7 +64,7 @@ fi
 
 # Create release
 gh release create "$TAG" \
-    "${MODELS[@]}" \
+    "${MODEL_PATHS[@]}" \
     --title "$TITLE" \
     --notes "$(cat <<'EOF'
 ## Photo-QA ML Models
@@ -69,11 +73,13 @@ Pre-trained models for photo quality analysis.
 
 ### Models
 
-| Model | Description | Size |
-|-------|-------------|------|
-| blazeface.safetensors | Face detection with keypoints | ~0.5 MB |
-| eye_state.safetensors | Open/closed eye classification | ~2 MB |
-| u2net.safetensors | Saliency detection | ~176 MB |
+| Model | Description | Size | Status |
+|-------|-------------|------|--------|
+| blazeface.safetensors | Face detection with keypoints | ~0.5 MB | ⚠️ Random init (non-functional) |
+| eye_state.safetensors | Open/closed eye classification | ~2 MB | ✅ Trained on CEW (96% acc) |
+| u2net.safetensors | Saliency detection | ~176 MB | ✅ Official pretrained |
+
+**Note**: BlazeFace requires training on WIDER FACE dataset. Eyes detection module will not work reliably until BlazeFace is trained.
 
 ### Usage
 

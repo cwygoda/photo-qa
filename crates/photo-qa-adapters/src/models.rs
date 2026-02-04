@@ -36,20 +36,21 @@ pub const MODELS: &[ModelInfo] = &[
         name: "blazeface",
         url:
             "https://github.com/cwygoda/photo-qa/releases/download/models-v1/blazeface.safetensors",
-        sha256: "0000000000000000000000000000000000000000000000000000000000000000", // TODO: Update with real hash
+        // Random init (seed=42) - face detection non-functional until trained on WIDER FACE
+        sha256: "a986cea323238e5a8bdb9b2fb3830bf8d04ba5baea00231fa7f33b4f2edc15c5",
         filename: "blazeface.safetensors",
     },
     ModelInfo {
         name: "eye_state",
         url:
             "https://github.com/cwygoda/photo-qa/releases/download/models-v1/eye_state.safetensors",
-        sha256: "0000000000000000000000000000000000000000000000000000000000000000", // TODO: Update with real hash
+        sha256: "366028c136659dcd11a7c3f2b14bf6e7f27717c10b2a627744afd646ef620856",
         filename: "eye_state.safetensors",
     },
     ModelInfo {
         name: "u2net",
         url: "https://github.com/cwygoda/photo-qa/releases/download/models-v1/u2net.safetensors",
-        sha256: "0000000000000000000000000000000000000000000000000000000000000000", // TODO: Update with real hash
+        sha256: "ef544aa6404ffd064c270bdf296075d448f30a3b0734961045b7a4c9ae27a244",
         filename: "u2net.safetensors",
     },
 ];
