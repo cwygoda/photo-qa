@@ -55,7 +55,7 @@ impl FaceDetection {
 /// `BlazeBlock` - the core building block of `BlazeFace`.
 ///
 /// Uses depthwise separable convolution with optional stride.
-/// Note: This implementation uses biased convolutions (BatchNorm folded in)
+/// Note: This implementation uses biased convolutions (`BatchNorm` folded in)
 /// to match the pretrained hollance/BlazeFace-PyTorch weights.
 struct BlazeBlock {
     depthwise: Conv2d,
@@ -152,7 +152,7 @@ impl Module for BlazeBlock {
 
 /// `BlazeFace` face detection model.
 ///
-/// Uses pretrained weights from hollance/BlazeFace-PyTorch with BatchNorm
+/// Uses pretrained weights from `hollance/BlazeFace-PyTorch` with `BatchNorm`
 /// folded into convolutional biases.
 pub struct BlazeFace {
     // Initial convolution (with bias, no BatchNorm)
@@ -239,14 +239,11 @@ impl BlazeFace {
         }
 
         // Detection heads for 16x16 (512 anchors, 2 per location)
-        let classifier_16 =
-            conv2d(88, 2, 1, Conv2dConfig::default(), vb.pp("classifier_16"))?;
-        let regressor_16 =
-            conv2d(88, 32, 1, Conv2dConfig::default(), vb.pp("regressor_16"))?;
+        let classifier_16 = conv2d(88, 2, 1, Conv2dConfig::default(), vb.pp("classifier_16"))?;
+        let regressor_16 = conv2d(88, 32, 1, Conv2dConfig::default(), vb.pp("regressor_16"))?;
 
         // Detection heads for 8x8 (384 anchors, 6 per location)
-        let classifier_8 =
-            conv2d(96, 6, 1, Conv2dConfig::default(), vb.pp("classifier_8"))?;
+        let classifier_8 = conv2d(96, 6, 1, Conv2dConfig::default(), vb.pp("classifier_8"))?;
         let regressor_8 = conv2d(96, 96, 1, Conv2dConfig::default(), vb.pp("regressor_8"))?;
 
         // Generate anchor boxes
