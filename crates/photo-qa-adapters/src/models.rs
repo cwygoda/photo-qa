@@ -36,8 +36,8 @@ pub const MODELS: &[ModelInfo] = &[
         name: "blazeface",
         url:
             "https://github.com/cwygoda/photo-qa/releases/download/models-v1/blazeface.safetensors",
-        // Random init (seed=42) - face detection non-functional until trained on WIDER FACE
-        sha256: "a986cea323238e5a8bdb9b2fb3830bf8d04ba5baea00231fa7f33b4f2edc15c5",
+        // Pretrained from hollance/BlazeFace-PyTorch (MediaPipe weights)
+        sha256: "ef7fa16472e60e0503d5b6e4d8f06d08bbc2038e19109de35f93c9c3361e71ab",
         filename: "blazeface.safetensors",
     },
     ModelInfo {

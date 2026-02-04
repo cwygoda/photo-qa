@@ -9,8 +9,8 @@
 #![allow(clippy::cast_precision_loss)]
 
 use anyhow::{Context, Result};
-use candle_core::{DType, Device, Module, ModuleT, Tensor};
-use candle_nn::{batch_norm, conv2d, conv2d_no_bias, BatchNorm, Conv2d, Conv2dConfig, VarBuilder};
+use candle_core::{DType, Device, Module, Tensor};
+use candle_nn::{conv2d, Conv2d, Conv2dConfig, VarBuilder};
 
 use super::sigmoid;
 
@@ -55,11 +55,11 @@ impl FaceDetection {
 /// `BlazeBlock` - the core building block of `BlazeFace`.
 ///
 /// Uses depthwise separable convolution with optional stride.
+/// Note: This implementation uses biased convolutions (BatchNorm folded in)
+/// to match the pretrained hollance/BlazeFace-PyTorch weights.
 struct BlazeBlock {
     depthwise: Conv2d,
     pointwise: Conv2d,
-    bn_dw: BatchNorm,
-    bn_pw: BatchNorm,
     channel_pad: usize,
     stride: usize,
 }
@@ -79,8 +79,8 @@ impl BlazeBlock {
             (kernel_size - 1) / 2
         };
 
-        // Depthwise convolution
-        let depthwise = conv2d_no_bias(
+        // Depthwise convolution (with bias - BatchNorm folded in)
+        let depthwise = conv2d(
             in_channels,
             in_channels,
             kernel_size,
@@ -93,8 +93,8 @@ impl BlazeBlock {
             vb.pp("depthwise"),
         )?;
 
-        // Pointwise convolution
-        let pointwise = conv2d_no_bias(
+        // Pointwise convolution (with bias - BatchNorm folded in)
+        let pointwise = conv2d(
             in_channels,
             out_channels,
             1,
@@ -102,16 +102,11 @@ impl BlazeBlock {
             vb.pp("pointwise"),
         )?;
 
-        let bn_dw = batch_norm(in_channels, 1e-5, vb.pp("bn_dw"))?;
-        let bn_pw = batch_norm(out_channels, 1e-5, vb.pp("bn_pw"))?;
-
         let channel_pad = out_channels.saturating_sub(in_channels);
 
         Ok(Self {
             depthwise,
             pointwise,
-            bn_dw,
-            bn_pw,
             channel_pad,
             stride,
         })
@@ -127,14 +122,12 @@ impl Module for BlazeBlock {
             x.clone()
         };
 
-        // Depthwise + BatchNorm + ReLU
+        // Depthwise + ReLU (bias included, no BatchNorm)
         let h = self.depthwise.forward(&x_padded)?;
-        let h = self.bn_dw.forward_t(&h, false)?;
         let h = h.relu()?;
 
-        // Pointwise + BatchNorm
+        // Pointwise (bias included, no BatchNorm)
         let h = self.pointwise.forward(&h)?;
-        let h = self.bn_pw.forward_t(&h, false)?;
 
         // Residual connection
         let residual = if self.stride == 2 {
@@ -158,10 +151,12 @@ impl Module for BlazeBlock {
 }
 
 /// `BlazeFace` face detection model.
+///
+/// Uses pretrained weights from hollance/BlazeFace-PyTorch with BatchNorm
+/// folded into convolutional biases.
 pub struct BlazeFace {
-    // Initial convolution
+    // Initial convolution (with bias, no BatchNorm)
     conv0: Conv2d,
-    bn0: BatchNorm,
 
     // Backbone 1 (produces 16x16 feature map)
     backbone1: Vec<BlazeBlock>,
@@ -193,7 +188,7 @@ impl BlazeFace {
     pub fn new(vb: VarBuilder) -> Result<Self> {
         let device = vb.device().clone();
 
-        // Initial 5x5 conv: 3 -> 24 channels, stride 2
+        // Initial 5x5 conv: 3 -> 24 channels, stride 2 (with bias, no BatchNorm)
         let conv0 = conv2d(
             3,
             24,
@@ -205,7 +200,6 @@ impl BlazeFace {
             },
             vb.pp("conv0"),
         )?;
-        let bn0 = batch_norm(24, 1e-5, vb.pp("bn0"))?;
 
         // Backbone 1: 128 -> 64 -> 32 -> 16 -> 8 (produces 88 channels at 8x8 after all strides)
         // Input: 64x64 after initial conv, two stride-2 blocks reduce to 16x16
@@ -246,21 +240,20 @@ impl BlazeFace {
 
         // Detection heads for 16x16 (512 anchors, 2 per location)
         let classifier_16 =
-            conv2d_no_bias(88, 2, 1, Conv2dConfig::default(), vb.pp("classifier_16"))?;
+            conv2d(88, 2, 1, Conv2dConfig::default(), vb.pp("classifier_16"))?;
         let regressor_16 =
-            conv2d_no_bias(88, 32, 1, Conv2dConfig::default(), vb.pp("regressor_16"))?;
+            conv2d(88, 32, 1, Conv2dConfig::default(), vb.pp("regressor_16"))?;
 
         // Detection heads for 8x8 (384 anchors, 6 per location)
         let classifier_8 =
-            conv2d_no_bias(96, 6, 1, Conv2dConfig::default(), vb.pp("classifier_8"))?;
-        let regressor_8 = conv2d_no_bias(96, 96, 1, Conv2dConfig::default(), vb.pp("regressor_8"))?;
+            conv2d(96, 6, 1, Conv2dConfig::default(), vb.pp("classifier_8"))?;
+        let regressor_8 = conv2d(96, 96, 1, Conv2dConfig::default(), vb.pp("regressor_8"))?;
 
         // Generate anchor boxes
         let anchors = Self::generate_anchors(&device)?;
 
         Ok(Self {
             conv0,
-            bn0,
             backbone1,
             backbone2,
             classifier_16,
@@ -344,10 +337,9 @@ impl BlazeFace {
 
     /// Runs face detection on a preprocessed input tensor.
     fn forward(&self, x: &Tensor) -> Result<(Tensor, Tensor)> {
-        // Initial convolution with asymmetric padding
+        // Initial convolution with asymmetric padding (bias included, no BatchNorm)
         let x = x.pad_with_zeros(2, 1, 2)?.pad_with_zeros(3, 1, 2)?;
         let x = self.conv0.forward(&x)?;
-        let x = self.bn0.forward_t(&x, false)?;
         let x = x.relu()?;
 
         // Backbone 1

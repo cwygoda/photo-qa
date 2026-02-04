@@ -75,11 +75,9 @@ Pre-trained models for photo quality analysis.
 
 | Model | Description | Size | Status |
 |-------|-------------|------|--------|
-| blazeface.safetensors | Face detection with keypoints | ~0.5 MB | ⚠️ Random init (non-functional) |
+| blazeface.safetensors | Face detection with keypoints | ~0.4 MB | ✅ MediaPipe pretrained |
 | eye_state.safetensors | Open/closed eye classification | ~2 MB | ✅ Trained on CEW (96% acc) |
 | u2net.safetensors | Saliency detection | ~176 MB | ✅ Official pretrained |
-
-**Note**: BlazeFace requires training on WIDER FACE dataset. Eyes detection module will not work reliably until BlazeFace is trained.
 
 ### Usage
 
