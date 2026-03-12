@@ -150,6 +150,26 @@ watch:
 watch-check:
     cargo watch -x check
 
+# === Profiling ===
+
+# Profile with samply against test corpus (requires datasets + samply)
+profile:
+    cargo build --release
+    samply record ./target/release/photo-qa check tests/fixtures --recursive
+
+# Profile specific module
+profile-blur:
+    cargo build --release
+    samply record ./target/release/photo-qa check tests/fixtures/blur --recursive --no-exposure --no-eyes
+
+profile-exposure:
+    cargo build --release
+    samply record ./target/release/photo-qa check tests/fixtures/exposure --recursive --no-blur --no-eyes
+
+profile-eyes:
+    cargo build --release
+    samply record ./target/release/photo-qa check tests/fixtures/eyes --recursive --no-blur --no-exposure
+
 # === Benchmarks ===
 
 # Run accuracy benchmarks (requires datasets)
